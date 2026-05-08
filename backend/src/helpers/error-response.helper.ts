@@ -254,6 +254,12 @@ function getPrismaPublicMessage(
           message: 'Data sudah digunakan',
           error: 'Gunakan nilai lain dan coba lagi.',
         };
+      case 'P2003':
+        return {
+          code: HttpStatus.BAD_REQUEST,
+          message: 'Referensi data tidak valid',
+          error: 'Data yang direferensikan tidak ditemukan. Periksa kembali data yang dikirim.',
+        };
       case 'P2025':
         return {
           code: HttpStatus.NOT_FOUND,

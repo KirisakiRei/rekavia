@@ -359,6 +359,20 @@ export class SapatamuService {
     const themeMap = new Map<string, string>();
     const packageMap = new Map<string, string>();
 
+    // Pastikan PlatformProduct 'sapatamu' ada sebelum upsert template/package
+    // yang memiliki foreign key ke platform_products.code
+    await this.db.platformProduct.upsert({
+      where: { code: 'sapatamu' },
+      update: { name: 'Sapatamu', status: 'active' },
+      create: {
+        code: 'sapatamu',
+        name: 'Sapatamu',
+        description: 'Undangan digital wedding invitation.',
+        status: 'active',
+        sort_order: 1,
+      },
+    });
+
     for (const seed of SAPATAMU_THEME_SEEDS) {
       const template = await this.db.invitationTemplate.upsert({
         where: { code: seed.code },
