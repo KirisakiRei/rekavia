@@ -102,18 +102,21 @@ export function MultipleFilesInterceptor(
     private getUploadPath(ext: FileExt): string {
       const now = new Date();
 
+      // Normalisasi: jpg → jpeg agar konsisten
+      const normalizedExt = ext === 'jpg' ? 'jpeg' : ext;
+
       let category = 'others';
-      if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) category = 'images';
+      if (['jpeg', 'png', 'gif', 'webp'].includes(normalizedExt)) category = 'images';
       else if (
-        ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv'].includes(ext)
+        ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv'].includes(normalizedExt)
       ) category = 'documents';
-      else if (['mp4', 'avi', 'mov', 'mkv'].includes(ext)) category = 'videos';
+      else if (['mp4', 'avi', 'mov', 'mkv', 'webm'].includes(normalizedExt)) category = 'videos';
 
       return join(
         process.cwd(),
         'uploads',
         category,
-        ext,
+        normalizedExt,
         now.getFullYear().toString(),
         String(now.getMonth() + 1).padStart(2, '0'),
         String(now.getDate()).padStart(2, '0'),
@@ -211,8 +214,10 @@ export function MultipleFilesInterceptor(
               const dir = this.getUploadPath(finalExt);
               fs.mkdirSync(dir, { recursive: true });
 
+              // Normalisasi jpg → jpeg agar konsisten dengan folder
+              const savedExt = finalExt === 'jpg' ? 'jpeg' : finalExt;
               const filename =
-                `${Date.now()}-${Math.round(Math.random() * 1e9)}.${finalExt}`;
+                `${Date.now()}-${Math.round(Math.random() * 1e9)}.${savedExt}`;
 
               const fullPath = join(dir, filename);
               fs.writeFileSync(fullPath, file.buffer);

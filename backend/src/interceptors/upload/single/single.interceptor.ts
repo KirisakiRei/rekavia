@@ -46,12 +46,15 @@ export function SingleFileInterceptor(
       const day = String(now.getDate()).padStart(2, '0');
       const ext = extname(file.originalname).toLowerCase();
 
+      // Normalisasi: .jpg dan .jpeg sama-sama masuk folder "jpeg"
+      const normalizedExt = ext === '.jpg' ? '.jpeg' : ext;
+
       let category = 'others';
-      if (['.jpg', '.jpeg', '.png', '.gif'].includes(ext)) {
+      if (['.jpeg', '.png', '.gif', '.webp'].includes(normalizedExt)) {
         category = 'images';
-      } else if (['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt'].includes(ext)) {
+      } else if (['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt'].includes(normalizedExt)) {
         category = 'documents';
-      } else if (['.mp4', '.avi', '.mov', '.mkv'].includes(ext)) {
+      } else if (['.mp4', '.avi', '.mov', '.mkv', '.webm'].includes(normalizedExt)) {
         category = 'videos';
       }
 
@@ -59,7 +62,7 @@ export function SingleFileInterceptor(
         process.cwd(),
         'uploads',
         category,
-        ext.replace('.', ''),
+        normalizedExt.replace('.', ''),
         `${year}`,
         `${month}`,
         `${day}`,
@@ -76,8 +79,11 @@ export function SingleFileInterceptor(
           },
           filename: (req: Request, file, cb) => {
             const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-            const fileExt = extname(file.originalname);
-            cb(null, `${uniqueSuffix}${fileExt}`);
+            // Selalu lowercase agar konsisten dengan nama folder
+            const fileExt = extname(file.originalname).toLowerCase();
+            // Normalisasi .jpg → .jpeg agar konsisten dengan folder
+            const normalizedExt = fileExt === '.jpg' ? '.jpeg' : fileExt;
+            cb(null, `${uniqueSuffix}${normalizedExt}`);
           },
         }),
         limits: MixinInterceptor.maxFileSizeBytes
