@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="64" viewBox="0 0 160 64" role="img" aria-label="BCA">
+  <rect width="160" height="64" rx="14" fill="#fff"/>
+  <path d="M34 16c8 0 15 5 18 12 7 1 12 6 12 13 0 8-7 14-16 14H30c-10 0-18-7-18-16 0-8 6-15 15-16 2-4 4-7 7-7Z" fill="#0b5cab"/>
+  <path d="M30 29h19v6H30v-6Zm0 10h23v6H30v-6Z" fill="#fff"/>
+  <text x="76" y="42" font-family="Arial, Helvetica, sans-serif" font-size="29" font-weight="800" fill="#0b5cab">BCA</text>
+</svg>

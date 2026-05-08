@@ -1,0 +1,311 @@
+import type { WeddingThemePreset } from '@/types/wedding'
+import { PUBLIC_SOURCE_THEME_PRESETS } from './sapatamu-source-themes'
+
+export const BRAND = {
+  name: 'Rekavia',
+  tagline: 'Rekayasa Visual Anda',
+  description: 'Platform untuk penjualan, pengelolaan, dan publikasi undangan digital dengan editor konten, slug kustom, RSVP, dan analitik.',
+  domain: 'rekavia.id',
+} as const
+
+export const PRODUCTS = [
+  {
+    id: 'sapatamu',
+    name: 'SapaTamu',
+    tagline: 'SAPATAMU • PLATFORM UNDANGAN DIGITAL',
+    headline: 'Tradisi yang Direkayasa Ulang, Secara Elegan.',
+    description: 'Desain elegan berpadu dengan fungsionalitas tinggi. Hadirkan pengalaman undangan digital interaktif yang cepat dan efisien.',
+    longDescription: 'Desain elegan berpadu dengan fungsionalitas tinggi. Hadirkan pengalaman undangan digital interaktif yang cepat dan efisien.',
+    icon: 'Heart',
+    color: '#C45D3E',
+    image: '/images/hero-sapatamu.png',
+    href: '/produk/sapatamu',
+    highlights: ['10 Tema Luxury', 'Live Preview Editor', 'RSVP & Buku Tamu', 'Broadcast WhatsApp', 'Digital Angpao', 'Background Music'],
+  },
+  {
+    id: 'etalasepro',
+    name: 'EtalasePro',
+    tagline: 'Toko Online UMKM',
+    headline: 'Etalase digital untuk usahamu yang berkembang',
+    description: 'Katalog produk digital untuk UMKM dengan manajemen inventaris, galeri produk, dan halaman toko profesional.',
+    longDescription: 'Tidak perlu marketplace — punya toko sendiri yang bikin pelanggan percaya. EtalasePro memberikan halaman produk yang rapi, galeri yang memukau, dan informasi kontak yang jelas untuk UMKM-mu.',
+    icon: 'ShoppingBag',
+    color: '#3A7D44',
+    image: '/images/hero-etalasepro.png',
+    href: '/produk/etalasepro',
+    highlights: ['Katalog Produk', 'Upload Foto Produk', 'Manajemen Ketersediaan', 'Profil Toko', 'Kontak WhatsApp', 'SEO Optimized'],
+  },
+  {
+    id: 'citrakorpora',
+    name: 'CitraKorpora',
+    tagline: 'Company Profile Premium',
+    headline: 'Tampil profesional di era digital',
+    description: 'Website company profile profesional yang meninggalkan kesan mendalam bagi klien dan partner bisnis Anda.',
+    longDescription: 'Kesan pertama menentukan segalanya. CitraKorpora membantu perusahaanmu tampil kredibel dengan website company profile yang bersih, informatif, dan mencerminkan identitas brand-mu.',
+    icon: 'Building2',
+    color: '#1B2A4A',
+    image: '/images/hero-citrakorpora.png',
+    href: '/produk/citrakorpora',
+    highlights: ['Profil Perusahaan', 'Halaman Tim', 'Portofolio & Klien', 'Kontak & Map', 'Multi-page', 'Mobile Responsive'],
+  },
+  {
+    id: 'edugerbang',
+    name: 'EduGerbang',
+    tagline: 'Website Sekolah Modern',
+    headline: 'Gerbang digital untuk institusi pendidikan',
+    description: 'Platform digital untuk institusi pendidikan: profil sekolah, pengumuman, galeri kegiatan, dan informasi akademik.',
+    longDescription: 'Orang tua dan calon siswa perlu informasi yang mudah diakses. EduGerbang membuat sekolahmu tampil modern dengan profil lengkap, pengumuman terkini, galeri kegiatan, dan informasi akademik dalam satu platform.',
+    icon: 'GraduationCap',
+    color: '#D97706',
+    image: '/images/hero-edugerbang.png',
+    href: '/produk/edugerbang',
+    highlights: ['Profil Sekolah', 'Pengumuman', 'Galeri Kegiatan', 'Info Akademik', 'Visi & Misi', 'Kontak & Peta'],
+  },
+] as const
+
+export const PUBLIC_PRODUCTS = PRODUCTS.filter((product) => product.id === 'sapatamu')
+
+export const PRODUCT_PRICING: Record<string, {
+  basic: { name: string; price: number; period: string; features: { text: string; included: boolean }[] };
+  pro: { name: string; price: number; period: string; badge?: string; features: { text: string; included: boolean }[] };
+}> = {
+  sapatamu: {
+    basic: {
+      name: 'Signature',
+      price: 0,
+      period: '',
+      features: [
+        { text: 'Tema Signature Aishwarya coming soon', included: true },
+        { text: 'Harga menyusul saat rilis', included: true },
+        { text: 'Formulir RSVP terintegrasi', included: false },
+        { text: 'Galeri foto', included: false },
+        { text: 'Countdown timer acara', included: false },
+        { text: 'Subdomain rekavia.id', included: false },
+        { text: 'Digital Angpao', included: false },
+        { text: 'Broadcast WhatsApp Generator', included: false },
+        { text: 'Galeri foto unlimited', included: false },
+        { text: 'Custom domain', included: false },
+        { text: 'Prioritas support', included: false },
+      ],
+    },
+    pro: {
+      name: 'Luxury',
+      price: 279000,
+      period: '',
+      badge: 'Populer',
+      features: [
+        { text: 'Aktivasi satu tema Luxury', included: true },
+        { text: 'Formulir RSVP terintegrasi', included: true },
+        { text: 'Album hingga 50 foto', included: true },
+        { text: 'Countdown timer acara', included: true },
+        { text: 'Subdomain rekavia.id', included: true },
+        { text: 'Digital Angpao', included: true },
+        { text: 'Broadcast WhatsApp Generator', included: true },
+        { text: 'Background music kustom', included: true },
+        { text: 'Custom domain', included: true },
+        { text: 'Prioritas support', included: true },
+      ],
+    },
+  },
+  etalasepro: {
+    basic: {
+      name: 'Starter',
+      price: 200000,
+      period: '/tahun',
+      features: [
+        { text: 'Halaman toko online', included: true },
+        { text: 'Katalog hingga 50 produk', included: true },
+        { text: 'Upload foto produk', included: true },
+        { text: 'Info kontak & WhatsApp', included: true },
+        { text: 'Subdomain rekavia.id', included: true },
+        { text: 'Produk unlimited', included: false },
+        { text: 'Kategori produk kustom', included: false },
+        { text: 'Custom domain', included: false },
+        { text: 'Analitik pengunjung', included: false },
+        { text: 'Prioritas support', included: false },
+      ],
+    },
+    pro: {
+      name: 'Business',
+      price: 350000,
+      period: '/tahun',
+      badge: 'Best Value',
+      features: [
+        { text: 'Halaman toko online', included: true },
+        { text: 'Produk unlimited', included: true },
+        { text: 'Upload foto multi-angle', included: true },
+        { text: 'Info kontak & WhatsApp', included: true },
+        { text: 'Subdomain rekavia.id', included: true },
+        { text: 'Kategori produk kustom', included: true },
+        { text: 'Custom domain', included: true },
+        { text: 'Analitik pengunjung', included: true },
+        { text: 'Badge produk (Sale, New)', included: true },
+        { text: 'Prioritas support', included: true },
+      ],
+    },
+  },
+  citrakorpora: {
+    basic: {
+      name: 'Professional',
+      price: 300000,
+      period: '/tahun',
+      features: [
+        { text: 'Landing page profesional', included: true },
+        { text: 'Halaman About & Contact', included: true },
+        { text: 'Galeri portofolio (maks. 20)', included: true },
+        { text: 'Info kontak & map embed', included: true },
+        { text: 'Subdomain rekavia.id', included: true },
+        { text: 'Halaman tim & profil', included: false },
+        { text: 'Multi-page (Services, Blog)', included: false },
+        { text: 'Custom domain', included: false },
+        { text: 'Analitik pengunjung', included: false },
+        { text: 'Prioritas support', included: false },
+      ],
+    },
+    pro: {
+      name: 'Enterprise',
+      price: 500000,
+      period: '/tahun',
+      badge: 'Premium',
+      features: [
+        { text: 'Landing page profesional', included: true },
+        { text: 'Halaman About & Contact', included: true },
+        { text: 'Galeri portofolio unlimited', included: true },
+        { text: 'Info kontak & map embed', included: true },
+        { text: 'Subdomain rekavia.id', included: true },
+        { text: 'Halaman tim & profil', included: true },
+        { text: 'Multi-page (Services, Blog)', included: true },
+        { text: 'Custom domain', included: true },
+        { text: 'Analitik pengunjung', included: true },
+        { text: 'Prioritas support', included: true },
+      ],
+    },
+  },
+  edugerbang: {
+    basic: {
+      name: 'Sekolah Basic',
+      price: 250000,
+      period: '/tahun',
+      features: [
+        { text: 'Profil sekolah lengkap', included: true },
+        { text: 'Halaman visi & misi', included: true },
+        { text: 'Pengumuman (maks. 20)', included: true },
+        { text: 'Galeri kegiatan', included: true },
+        { text: 'Subdomain rekavia.id', included: true },
+        { text: 'Pengumuman unlimited', included: false },
+        { text: 'Info akademik & kurikulum', included: false },
+        { text: 'Custom domain', included: false },
+        { text: 'Kalender akademik', included: false },
+        { text: 'Prioritas support', included: false },
+      ],
+    },
+    pro: {
+      name: 'Sekolah Pro',
+      price: 400000,
+      period: '/tahun',
+      badge: 'Lengkap',
+      features: [
+        { text: 'Profil sekolah lengkap', included: true },
+        { text: 'Halaman visi & misi', included: true },
+        { text: 'Pengumuman unlimited', included: true },
+        { text: 'Galeri kegiatan unlimited', included: true },
+        { text: 'Subdomain rekavia.id', included: true },
+        { text: 'Info akademik & kurikulum', included: true },
+        { text: 'Kalender akademik', included: true },
+        { text: 'Custom domain', included: true },
+        { text: 'Halaman guru & staff', included: true },
+        { text: 'Prioritas support', included: true },
+      ],
+    },
+  },
+}
+
+export const PRICING = PRODUCT_PRICING.sapatamu
+
+export const WEDDING_THEMES: WeddingThemePreset[] = [
+  {
+    id: 'malay-ethnic-red-ruby',
+    name: 'Malay ethnic - Red ruby',
+    group: 'Budaya',
+    description: 'Tema luxury Malay ethnic bernuansa red ruby.',
+    previewImage: '/sapatamu-themes/malay-ethnic-red-ruby/original/pictures/picture_17393765661722ej1do.jpeg',
+    primaryColor: '#4a1a1f',
+    secondaryColor: '#341215',
+    accentColor: '#a97f71',
+    fontHeading: 'Gautreaux',
+    fontBody: 'Fahkwang',
+    bgPattern: 'batik',
+  },
+  ...PUBLIC_SOURCE_THEME_PRESETS.slice(0, 1),
+  {
+    id: 'batak-ethnic-maroon-mistyrose',
+    name: 'Batak ethnic - maroon mistyrose',
+    group: 'Budaya',
+    description: 'Tema luxury Batak ethnic bernuansa maroon mistyrose.',
+    previewImage: '/sapatamu-themes/batak-ethnic-maroon-mistyrose/original/pictures/picture_1739377539664wswbzef.jpeg',
+    primaryColor: '#7b0f24',
+    secondaryColor: '#230c10',
+    accentColor: '#b55963',
+    fontHeading: 'Annabelle-JF',
+    fontBody: 'Fahkwang',
+    bgPattern: 'batik',
+  },
+  ...PUBLIC_SOURCE_THEME_PRESETS.slice(1),
+]
+
+export const NAV_LINKS = [
+  { label: 'Produk', href: '/#produk' },
+  { label: 'Cara Kerja', href: '/#cara-kerja' },
+  { label: 'Tentang', href: '/tentang' },
+] as const
+
+export const CMS_SIDEBAR_LINKS = {
+  sapatamu: [
+    { label: 'Editor', href: '/cms/sapatamu', icon: 'PenTool' },
+    { label: 'Buku Tamu', href: '/cms/sapatamu/rsvp', icon: 'Users' },
+    { label: 'Digital Angpao', href: '/cms/sapatamu/angpao', icon: 'Wallet' },
+    { label: 'Broadcast', href: '/cms/sapatamu/broadcast', icon: 'Send' },
+  ],
+  etalasepro: [
+    { label: 'Dashboard', href: '/cms/etalasepro', icon: 'LayoutDashboard' },
+    { label: 'Produk', href: '/cms/etalasepro/produk', icon: 'Package' },
+    { label: 'Profil Toko', href: '/cms/etalasepro/profil-toko', icon: 'ShoppingBag' },
+    { label: 'Pengaturan', href: '/cms/etalasepro/pengaturan', icon: 'Settings' },
+  ],
+  citrakorpora: [
+    { label: 'Dashboard', href: '/cms/citrakorpora', icon: 'LayoutDashboard' },
+    { label: 'Profil Perusahaan', href: '/cms/citrakorpora/profil', icon: 'Building2' },
+    { label: 'Tim', href: '/cms/citrakorpora/tim', icon: 'Users' },
+    { label: 'Portofolio', href: '/cms/citrakorpora/portofolio', icon: 'Briefcase' },
+  ],
+  edugerbang: [
+    { label: 'Dashboard', href: '/cms/edugerbang', icon: 'LayoutDashboard' },
+    { label: 'Profil Sekolah', href: '/cms/edugerbang/profil', icon: 'Building2' },
+    { label: 'Pengumuman', href: '/cms/edugerbang/pengumuman', icon: 'Megaphone' },
+    { label: 'Galeri', href: '/cms/edugerbang/galeri', icon: 'Image' },
+    { label: 'Akademik', href: '/cms/edugerbang/akademik', icon: 'BookOpen' },
+  ],
+  general: [
+    { label: 'Dashboard', href: '/cms', icon: 'LayoutDashboard' },
+    { label: 'Profil', href: '/cms/profil', icon: 'User' },
+    { label: 'Langganan', href: '/cms/langganan', icon: 'CreditCard' },
+  ],
+  admin: [
+    { label: 'Dashboard', href: '/admin', icon: 'LayoutDashboard' },
+    { label: 'Users', href: '/admin/users', icon: 'Users' },
+    { label: 'Finance', href: '/admin/finance', icon: 'CreditCard' },
+    { label: 'Vouchers', href: '/admin/vouchers', icon: 'Wallet' },
+    { label: 'Products', href: '/admin/products', icon: 'Package' },
+    { label: 'Audit Log', href: '/admin/audit-logs', icon: 'History' },
+    { label: 'Settings', href: '/admin/settings', icon: 'Settings' },
+  ],
+} as const
+
+export const formatRupiah = (amount: number): string => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount)
+}

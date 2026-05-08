@@ -1,0 +1,709 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                 String      @id @default(cuid())
+  username           String      @unique @db.VarChar(150)
+  password           String      @db.Text
+  role               AccountRole
+  status             AccountStatus @default(active)
+  refresh_token_hash String?     @db.Text
+  created_at         DateTime    @default(now())
+  updated_at         DateTime    @updatedAt
+  deleted_at         DateTime?
+  User               User?
+  AuthLog            AuthLog[]
+
+  @@map("accounts")
+}
+
+enum AccountRole {
+  user  @map("user")
+  admin @map("admin")
+}
+
+enum AccountStatus {
+  active
+  suspended
+}
+
+model User {
+  id                         String                @id @default(cuid())
+  account_id                 String                @unique
+  account                    Account               @relation(fields: [account_id], references: [id])
+  name                       String                @db.VarChar(150)
+  email                      String                @unique @db.VarChar(150)
+  address                    String?               @db.VarChar(250)
+  phone_number               String?               @db.Char(20)
+  created_at                 DateTime              @default(now())
+  updated_at                 DateTime              @updatedAt
+  deleted_at                 DateTime?
+  orders                     Order[]
+  user_template_licenses     UserTemplateLicense[]
+  invitation_theme_accesses  InvitationThemeAccess[]
+  invitations                Invitation[]
+  invitation_drafts          InvitationDraft[]
+  updated_invitation_content InvitationContent[]   @relation("UpdatedInvitationContentByUser")
+  voucher_redemptions        VoucherRedemption[]
+  admin_audit_logs           AdminAuditLog[]
+
+  @@map("users")
+}
+
+model AuthLog {
+  id         String       @id @default(cuid())
+  account_id String
+  account    Account      @relation(fields: [account_id], references: [id])
+  activity   AuthActivity
+  created_at DateTime     @default(now())
+  updated_at DateTime     @updatedAt
+  deleted_at DateTime?
+
+  @@map("auth_log")
+}
+
+enum AuthActivity {
+  login
+  logout
+}
+
+model Package {
+  id                      String                  @id @default(cuid())
+  product_code            String                  @default("sapatamu") @db.VarChar(60)
+  code                    String                  @unique @db.VarChar(60)
+  name                    String                  @db.VarChar(120)
+  description             String?                 @db.Text
+  price                   Decimal                 @db.Decimal(12, 2)
+  currency                String                  @default("IDR") @db.Char(3)
+  package_type            PackageType             @default(base)
+  features_json           Json?
+  is_active               Boolean                 @default(true)
+  sort_order              Int                     @default(0)
+  created_at              DateTime                @default(now())
+  updated_at              DateTime                @updatedAt
+  deleted_at              DateTime?
+  product                 PlatformProduct         @relation(fields: [product_code], references: [code])
+  package_template_access PackageTemplateAccess[]
+  order_items             OrderItem[]
+  user_template_licenses  UserTemplateLicense[]
+  invitation_drafts       InvitationDraft[]
+  vouchers                 Voucher[]
+
+  @@index([product_code])
+  @@map("packages")
+}
+
+model InvitationTemplate {
+  id                      String                  @id @default(cuid())
+  product_code            String                  @default("sapatamu") @db.VarChar(60)
+  code                    String                  @unique @db.VarChar(60)
+  name                    String                  @db.VarChar(120)
+  category                String?                 @db.VarChar(60)
+  description             String?                 @db.Text
+  preview_image_url       String?                 @db.VarChar(255)
+  metadata                Json?
+  is_active               Boolean                 @default(true)
+  created_at              DateTime                @default(now())
+  updated_at              DateTime                @updatedAt
+  deleted_at              DateTime?
+  product                 PlatformProduct         @relation(fields: [product_code], references: [code])
+  package_template_access PackageTemplateAccess[]
+  order_items             OrderItem[]
+  user_template_licenses  UserTemplateLicense[]
+  invitation_theme_accesses InvitationThemeAccess[]
+  invitations             Invitation[]
+  invitation_drafts       InvitationDraft[]
+  template_assets         TemplateAsset[]
+  editor_layout_templates EditorLayoutTemplate[]
+
+  @@index([product_code])
+  @@map("invitation_templates")
+}
+
+model PlatformProduct {
+  id                       String                 @id @default(cuid())
+  code                     String                 @unique @db.VarChar(60)
+  name                     String                 @db.VarChar(120)
+  description              String?                @db.Text
+  status                   PlatformProductStatus  @default(active)
+  sort_order               Int                    @default(0)
+  config_json              Json?
+  created_at               DateTime               @default(now())
+  updated_at               DateTime               @updatedAt
+  deleted_at               DateTime?
+  packages                 Package[]
+  invitation_templates     InvitationTemplate[]
+  template_assets          TemplateAsset[]
+  editor_layout_templates  EditorLayoutTemplate[]
+  vouchers                 Voucher[]
+
+  @@map("platform_products")
+}
+
+model TemplateAsset {
+  id           String            @id @default(cuid())
+  template_id  String?
+  product_code String            @default("sapatamu") @db.VarChar(60)
+  asset_type   TemplateAssetType
+  asset_key    String            @db.VarChar(120)
+  url          String            @db.VarChar(500)
+  file_name    String?           @db.VarChar(180)
+  metadata     Json?
+  sort_order   Int               @default(0)
+  is_active    Boolean           @default(true)
+  created_at   DateTime          @default(now())
+  updated_at   DateTime          @updatedAt
+  deleted_at   DateTime?
+  template     InvitationTemplate? @relation(fields: [template_id], references: [id])
+  product      PlatformProduct   @relation(fields: [product_code], references: [code])
+
+  @@index([template_id])
+  @@index([product_code])
+  @@index([asset_type])
+  @@unique([template_id, asset_key])
+  @@map("template_assets")
+}
+
+model EditorLayoutTemplate {
+  id                         String              @id @default(cuid())
+  product_code               String              @default("sapatamu") @db.VarChar(60)
+  template_id                String?
+  layout_code                String              @db.VarChar(120)
+  family                     String              @db.VarChar(80)
+  title                      String              @db.VarChar(160)
+  preview_image_url          String?             @db.VarChar(500)
+  default_data_json          Json?
+  required_feature_code      String?             @db.VarChar(120)
+  max_instances              Int?
+  sort_order                 Int                 @default(0)
+  supports_preview_selection Boolean             @default(true)
+  is_active                  Boolean             @default(true)
+  created_at                 DateTime            @default(now())
+  updated_at                 DateTime            @updatedAt
+  deleted_at                 DateTime?
+  product                    PlatformProduct     @relation(fields: [product_code], references: [code])
+  template                   InvitationTemplate? @relation(fields: [template_id], references: [id])
+
+  @@index([product_code])
+  @@index([product_code, layout_code])
+  @@index([template_id])
+  @@unique([template_id, layout_code])
+  @@map("editor_layout_templates")
+}
+
+model PackageTemplateAccess {
+  id           String             @id @default(cuid())
+  package_id   String
+  template_id  String
+  is_available Boolean            @default(true)
+  created_at   DateTime           @default(now())
+  updated_at   DateTime           @updatedAt
+  deleted_at   DateTime?
+  package      Package            @relation(fields: [package_id], references: [id])
+  template     InvitationTemplate @relation(fields: [template_id], references: [id])
+
+  @@unique([package_id, template_id])
+  @@map("package_template_access")
+}
+
+model Order {
+  id             String      @id @default(cuid())
+  user_id        String
+  status         OrderStatus @default(pending)
+  total_amount   Decimal     @db.Decimal(12, 2)
+  currency       String      @default("IDR") @db.Char(3)
+  checkout_token String      @unique @db.VarChar(120)
+  expired_at     DateTime?
+  notes          String?     @db.Text
+  created_at     DateTime    @default(now())
+  updated_at     DateTime    @updatedAt
+  deleted_at     DateTime?
+  user           User        @relation(fields: [user_id], references: [id])
+  order_items    OrderItem[]
+  payments       Payment[]
+  voucher_redemptions VoucherRedemption[]
+
+  @@index([user_id])
+  @@map("orders")
+}
+
+model OrderItem {
+  id                    String               @id @default(cuid())
+  order_id              String
+  template_id           String
+  package_id            String
+  qty                   Int                  @default(1)
+  unit_price_snapshot   Decimal              @db.Decimal(12, 2)
+  subtotal              Decimal              @db.Decimal(12, 2)
+  metadata              Json?
+  created_at            DateTime             @default(now())
+  updated_at            DateTime             @updatedAt
+  deleted_at            DateTime?
+  order                 Order                @relation(fields: [order_id], references: [id])
+  template              InvitationTemplate   @relation(fields: [template_id], references: [id])
+  package               Package              @relation(fields: [package_id], references: [id])
+  user_template_license UserTemplateLicense?
+  invitation_feature_grant InvitationFeatureGrant?
+  invitation_theme_access InvitationThemeAccess?
+
+  @@index([order_id])
+  @@index([template_id])
+  @@index([package_id])
+  @@map("order_items")
+}
+
+model Payment {
+  id           String        @id @default(cuid())
+  order_id     String
+  method       String        @db.VarChar(50)
+  status       PaymentStatus @default(pending)
+  provider_ref String?       @unique @db.VarChar(120)
+  amount       Decimal       @db.Decimal(12, 2)
+  paid_at      DateTime?
+  metadata     Json?
+  created_at   DateTime      @default(now())
+  updated_at   DateTime      @updatedAt
+  deleted_at   DateTime?
+  order        Order         @relation(fields: [order_id], references: [id])
+
+  @@index([order_id])
+  @@map("payments")
+}
+
+model UserTemplateLicense {
+  id            String             @id @default(cuid())
+  user_id       String
+  template_id   String
+  package_id    String
+  order_item_id String?            @unique
+  status        LicenseStatus      @default(active)
+  activated_at  DateTime           @default(now())
+  revoked_at    DateTime?
+  created_at    DateTime           @default(now())
+  updated_at    DateTime           @updatedAt
+  deleted_at    DateTime?
+  user          User               @relation(fields: [user_id], references: [id])
+  template      InvitationTemplate @relation(fields: [template_id], references: [id])
+  package       Package            @relation(fields: [package_id], references: [id])
+  order_item    OrderItem?         @relation(fields: [order_item_id], references: [id])
+  invitations   Invitation[]
+  invitation_theme_accesses InvitationThemeAccess[]
+
+  @@index([user_id])
+  @@index([template_id])
+  @@index([package_id])
+  @@map("user_template_licenses")
+}
+
+model Invitation {
+  id                         String                     @id @default(cuid())
+  user_id                    String
+  license_id                 String?
+  template_id                String
+  title                      String                     @db.VarChar(180)
+  bride_name                 String?                    @db.VarChar(120)
+  groom_name                 String?                    @db.VarChar(120)
+  event_date                 DateTime?
+  timezone                   String                     @default("Asia/Jakarta") @db.VarChar(60)
+  status                     InvitationStatus           @default(draft)
+  published_at               DateTime?
+  archived_at                DateTime?
+  created_at                 DateTime                   @default(now())
+  updated_at                 DateTime                   @updatedAt
+  deleted_at                 DateTime?
+  user                       User                       @relation(fields: [user_id], references: [id])
+  license                    UserTemplateLicense?       @relation(fields: [license_id], references: [id])
+  template                   InvitationTemplate         @relation(fields: [template_id], references: [id])
+  invitation_slugs           InvitationSlug[]
+  invitation_contents        InvitationContent[]
+  invitation_media           InvitationMedia[]
+  invitation_guests          InvitationGuest[]
+  invitation_visits          InvitationVisit[]
+  invitation_rsvps           InvitationRsvp[]
+  invitation_greetings       InvitationGreeting[]
+  invitation_analytics_daily InvitationAnalyticsDaily[]
+  invitation_feature_grants  InvitationFeatureGrant[]
+  invitation_theme_accesses  InvitationThemeAccess[]
+
+  @@index([user_id])
+  @@index([license_id])
+  @@index([template_id])
+  @@map("invitations")
+}
+
+model InvitationSlug {
+  id            String        @id @default(cuid())
+  invitation_id String
+  slug          String        @unique @db.VarChar(180)
+  is_primary    Boolean       @default(false)
+  created_by    SlugCreatedBy @default(system)
+  created_at    DateTime      @default(now())
+  updated_at    DateTime      @updatedAt
+  deleted_at    DateTime?
+  invitation    Invitation    @relation(fields: [invitation_id], references: [id])
+
+  @@index([invitation_id])
+  @@map("invitation_slugs")
+}
+
+model InvitationContent {
+  id                 String     @id @default(cuid())
+  invitation_id      String
+  version            Int
+  content_json       Json
+  is_current         Boolean    @default(true)
+  updated_by_user_id String?
+  created_at         DateTime   @default(now())
+  updated_at         DateTime   @updatedAt
+  deleted_at         DateTime?
+  invitation         Invitation @relation(fields: [invitation_id], references: [id])
+  updated_by_user    User?      @relation("UpdatedInvitationContentByUser", fields: [updated_by_user_id], references: [id])
+
+  @@unique([invitation_id, version])
+  @@index([updated_by_user_id])
+  @@map("invitation_contents")
+}
+
+model InvitationMedia {
+  id            String              @id @default(cuid())
+  invitation_id String
+  media_type    InvitationMediaType
+  url           String              @db.VarChar(255)
+  file_name     String?             @db.VarChar(180)
+  sort_order    Int                 @default(0)
+  metadata      Json?
+  created_at    DateTime            @default(now())
+  updated_at    DateTime            @updatedAt
+  deleted_at    DateTime?
+  invitation    Invitation          @relation(fields: [invitation_id], references: [id])
+
+  @@index([invitation_id])
+  @@map("invitation_media")
+}
+
+model InvitationGuest {
+  id                   String               @id @default(cuid())
+  invitation_id        String
+  name                 String               @db.VarChar(150)
+  phone_number         String?              @db.Char(20)
+  email                String?              @db.VarChar(150)
+  guest_key            String               @unique @db.VarChar(120)
+  personalized_url     String?              @db.VarChar(255)
+  notes                String?              @db.Text
+  metadata             Json?
+  created_at           DateTime             @default(now())
+  updated_at           DateTime             @updatedAt
+  deleted_at           DateTime?
+  invitation           Invitation           @relation(fields: [invitation_id], references: [id])
+  invitation_visits    InvitationVisit[]
+  invitation_rsvps     InvitationRsvp[]
+  invitation_greetings InvitationGreeting[]
+
+  @@index([invitation_id])
+  @@map("invitation_guests")
+}
+
+model InvitationDraft {
+  id                  String                @id @default(cuid())
+  user_id             String
+  product_category    String                @default("sapatamu") @db.VarChar(60)
+  slug_candidate      String?               @db.VarChar(180)
+  theme_id            String?
+  selected_package_id String?
+  wizard_json         Json?
+  status              InvitationDraftStatus @default(in_progress)
+  reserved_until      DateTime?
+  created_at          DateTime              @default(now())
+  updated_at          DateTime              @updatedAt
+  deleted_at          DateTime?
+  user                User                  @relation(fields: [user_id], references: [id])
+  theme               InvitationTemplate?   @relation(fields: [theme_id], references: [id])
+  selected_package    Package?              @relation(fields: [selected_package_id], references: [id])
+
+  @@index([user_id])
+  @@index([theme_id])
+  @@index([selected_package_id])
+  @@map("invitation_drafts")
+}
+
+model InvitationFeatureGrant {
+  id                   String     @id @default(cuid())
+  invitation_id        String
+  source_order_item_id String     @unique
+  feature_code         String     @db.VarChar(120)
+  quantity             Int        @default(0)
+  metadata             Json?
+  created_at           DateTime   @default(now())
+  updated_at           DateTime   @updatedAt
+  deleted_at           DateTime?
+  invitation           Invitation @relation(fields: [invitation_id], references: [id])
+  source_order_item    OrderItem  @relation(fields: [source_order_item_id], references: [id])
+
+  @@index([invitation_id])
+  @@map("invitation_feature_grants")
+}
+
+model InvitationThemeAccess {
+  id                       String                    @id @default(cuid())
+  user_id                  String
+  invitation_id            String
+  template_id              String
+  user_template_license_id String?
+  source_order_item_id     String?                   @unique
+  access_type              InvitationThemeAccessType
+  starts_at                DateTime                  @default(now())
+  expires_at               DateTime?
+  revoked_at               DateTime?
+  created_at               DateTime                  @default(now())
+  updated_at               DateTime                  @updatedAt
+  deleted_at               DateTime?
+  user                     User                      @relation(fields: [user_id], references: [id])
+  invitation               Invitation                @relation(fields: [invitation_id], references: [id])
+  template                 InvitationTemplate        @relation(fields: [template_id], references: [id])
+  user_template_license    UserTemplateLicense?      @relation(fields: [user_template_license_id], references: [id])
+  source_order_item        OrderItem?                @relation(fields: [source_order_item_id], references: [id])
+
+  @@index([user_id])
+  @@index([invitation_id])
+  @@index([template_id])
+  @@index([user_template_license_id])
+  @@index([access_type])
+  @@map("invitation_theme_accesses")
+}
+
+model InvitationVisit {
+  id            String           @id @default(cuid())
+  invitation_id String
+  guest_id      String?
+  visitor_hash  String?          @db.VarChar(180)
+  source        String?          @db.VarChar(60)
+  user_agent    String?          @db.VarChar(500)
+  ip_address    String?          @db.VarChar(64)
+  viewed_at     DateTime         @default(now())
+  invitation    Invitation       @relation(fields: [invitation_id], references: [id])
+  guest         InvitationGuest? @relation(fields: [guest_id], references: [id])
+
+  @@index([invitation_id, viewed_at])
+  @@index([guest_id])
+  @@map("invitation_visits")
+}
+
+model InvitationRsvp {
+  id              String               @id @default(cuid())
+  invitation_id   String
+  guest_id        String?
+  guest_name      String               @db.VarChar(150)
+  status          InvitationRsvpStatus
+  attendees_count Int                  @default(1)
+  message         String?              @db.Text
+  created_at      DateTime             @default(now())
+  updated_at      DateTime             @updatedAt
+  deleted_at      DateTime?
+  invitation      Invitation           @relation(fields: [invitation_id], references: [id])
+  guest           InvitationGuest?     @relation(fields: [guest_id], references: [id])
+
+  @@index([invitation_id])
+  @@index([guest_id])
+  @@map("invitation_rsvps")
+}
+
+model InvitationGreeting {
+  id            String           @id @default(cuid())
+  invitation_id String
+  guest_id      String?
+  guest_name    String           @db.VarChar(150)
+  message       String           @db.Text
+  is_approved   Boolean          @default(true)
+  created_at    DateTime         @default(now())
+  updated_at    DateTime         @updatedAt
+  deleted_at    DateTime?
+  invitation    Invitation       @relation(fields: [invitation_id], references: [id])
+  guest         InvitationGuest? @relation(fields: [guest_id], references: [id])
+
+  @@index([invitation_id])
+  @@index([guest_id])
+  @@map("invitation_greetings")
+}
+
+model InvitationAnalyticsDaily {
+  id              String     @id @default(cuid())
+  invitation_id   String
+  date            DateTime   @db.Date
+  total_views     Int        @default(0)
+  unique_views    Int        @default(0)
+  total_rsvp      Int        @default(0)
+  total_greetings Int        @default(0)
+  created_at      DateTime   @default(now())
+  updated_at      DateTime   @updatedAt
+  invitation      Invitation @relation(fields: [invitation_id], references: [id])
+
+  @@unique([invitation_id, date])
+  @@index([invitation_id])
+  @@map("invitation_analytics_daily")
+}
+
+model Voucher {
+  id              String        @id @default(cuid())
+  product_code    String?       @db.VarChar(60)
+  package_id      String?
+  code            String        @unique @db.VarChar(80)
+  label           String        @db.VarChar(160)
+  description     String?       @db.Text
+  discount_type   VoucherDiscountType
+  discount_value  Decimal       @db.Decimal(12, 2)
+  min_order_amount Decimal?     @db.Decimal(12, 2)
+  max_discount_amount Decimal?  @db.Decimal(12, 2)
+  quota_total     Int?
+  quota_per_user  Int?
+  starts_at       DateTime?
+  ends_at         DateTime?
+  is_active       Boolean       @default(true)
+  metadata        Json?
+  created_at      DateTime      @default(now())
+  updated_at      DateTime      @updatedAt
+  deleted_at      DateTime?
+  product         PlatformProduct? @relation(fields: [product_code], references: [code])
+  package         Package?      @relation(fields: [package_id], references: [id])
+  redemptions     VoucherRedemption[]
+
+  @@index([product_code])
+  @@index([package_id])
+  @@map("vouchers")
+}
+
+model VoucherRedemption {
+  id           String   @id @default(cuid())
+  voucher_id   String
+  user_id      String
+  order_id     String?
+  discount_amount Decimal @db.Decimal(12, 2)
+  metadata     Json?
+  created_at   DateTime @default(now())
+  deleted_at   DateTime?
+  voucher      Voucher  @relation(fields: [voucher_id], references: [id])
+  user         User     @relation(fields: [user_id], references: [id])
+  order        Order?   @relation(fields: [order_id], references: [id])
+
+  @@index([voucher_id])
+  @@index([user_id])
+  @@index([order_id])
+  @@map("voucher_redemptions")
+}
+
+model AdminAuditLog {
+  id            String   @id @default(cuid())
+  admin_user_id String?
+  action        String   @db.VarChar(120)
+  entity        String   @db.VarChar(120)
+  entity_id     String?  @db.VarChar(120)
+  before_json   Json?
+  after_json    Json?
+  ip_address    String?  @db.VarChar(64)
+  user_agent    String?  @db.VarChar(500)
+  created_at    DateTime @default(now())
+  admin_user    User?    @relation(fields: [admin_user_id], references: [id])
+
+  @@index([admin_user_id])
+  @@index([entity, entity_id])
+  @@map("admin_audit_logs")
+}
+
+enum OrderStatus {
+  pending
+  paid
+  failed
+  expired
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+  refunded
+}
+
+enum LicenseStatus {
+  active
+  revoked
+}
+
+enum InvitationThemeAccessType {
+  primary
+  addon_owner
+  addon_shared
+}
+
+enum PackageType {
+  base
+  upgrade
+  add_on
+}
+
+enum InvitationStatus {
+  draft
+  published
+  archived
+}
+
+enum InvitationDraftStatus {
+  in_progress
+  pending_payment
+  converted
+  cancelled
+  expired
+}
+
+enum SlugCreatedBy {
+  system
+  user
+  admin
+}
+
+enum InvitationMediaType {
+  image
+  audio
+  video
+}
+
+enum InvitationRsvpStatus {
+  hadir
+  tidak
+  ragu
+}
+
+enum PlatformProductStatus {
+  active
+  coming_soon
+  inactive
+}
+
+enum TemplateAssetType {
+  preview
+  background
+  ornament
+  frame
+  font
+  music
+  layout_preview
+  video
+  icon
+}
+
+enum VoucherDiscountType {
+  percent
+  fixed
+}

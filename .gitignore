@@ -1,0 +1,10 @@
+invitation-editor-scraping/
+logs/
+logo/
+node_modules/
+dist/
+docs/
+.codex-logs/
+template/
+vintage_template/
+*.log  
