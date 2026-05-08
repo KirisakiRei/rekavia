@@ -136,12 +136,32 @@ sudo nano /etc/nginx/sites-available/rvtech
 Isi konfigurasi Nginx:
 
 ```nginx
-# Backend API
+# ── Gzip compression (taruh di /etc/nginx/nginx.conf dalam block http{}) ──────
+# gzip on;
+# gzip_vary on;
+# gzip_min_length 1024;
+# gzip_proxied any;
+# gzip_comp_level 5;
+# gzip_types text/plain text/css text/javascript application/javascript
+#            application/json image/svg+xml application/xml;
+
+# ── Site config ───────────────────────────────────────────────────────────────
 server {
     listen 80;
-    server_name api.rvtech.id;
+    server_name rvtech.id www.rvtech.id 165.22.240.104;
 
-    location / {
+    # ── Uploaded files user (nama file unik/timestamp → cache 1 tahun) ────────
+    location /uploads {
+        alias /var/www/rekavia/backend/uploads;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        add_header Vary "Accept-Encoding";
+        try_files $uri =404;
+    }
+
+    # ── Backend API — no cache ─────────────────────────────────────────────────
+    location /api {
+        rewrite ^/api/(.*)$ /$1 break;
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -151,37 +171,40 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_cache_bypass $http_upgrade;
-
-        # Timeout untuk upload file besar
+        client_max_body_size 30M;
         proxy_read_timeout 120s;
-        proxy_connect_timeout 10s;
-
-        # Limit ukuran body (sesuaikan dengan max upload)
-        client_max_body_size 20M;
+        add_header Cache-Control "no-store";
     }
-}
 
-# Frontend
-server {
-    listen 80;
-    server_name rvtech.id www.rvtech.id;
-
-    root /var/www/rvtech/frontend/dist;
-    index index.html;
-
-    # Gzip compression
-    gzip on;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
-
-    # Cache static assets
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+    # ── JS/CSS/Font Vite (nama file pakai hash → cache 1 tahun) ───────────────
+    location ~* \.(js|css|woff2?|ttf|eot)$ {
+        proxy_pass http://localhost:5173;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
         expires 1y;
         add_header Cache-Control "public, immutable";
+        add_header Vary "Accept-Encoding";
     }
 
-    # SPA fallback — semua route ke index.html
+    # ── Gambar & aset statis frontend (tema, layout, icon) ────────────────────
+    location ~* \.(png|jpg|jpeg|webp|svg|ico|gif|mp3|mp4|webm)$ {
+        proxy_pass http://localhost:5173;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        expires 30d;
+        add_header Cache-Control "public";
+        add_header Vary "Accept-Encoding";
+    }
+
+    # ── Frontend SPA (index.html — no cache) ──────────────────────────────────
     location / {
-        try_files $uri $uri/ /index.html;
+        proxy_pass http://localhost:5173;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
     }
 }
 ```
@@ -191,6 +214,39 @@ server {
 sudo ln -s /etc/nginx/sites-available/rvtech /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl reload nginx
+```
+
+**Aktifkan Gzip di nginx.conf:**
+
+```bash
+sudo nano /etc/nginx/nginx.conf
+```
+
+Tambahkan di dalam block `http { ... }`:
+
+```nginx
+http {
+    # Gzip
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_proxied any;
+    gzip_comp_level 5;
+    gzip_types
+        text/plain
+        text/css
+        text/javascript
+        application/javascript
+        application/json
+        image/svg+xml
+        application/xml;
+
+    # ... konfigurasi lainnya
+}
+```
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
 ### 3. SSL dengan Certbot (Let's Encrypt)

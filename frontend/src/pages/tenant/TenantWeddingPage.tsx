@@ -17,6 +17,161 @@ import { ensureEditorFonts, reconcileEditorDocumentWithLayoutDefaults } from '@/
 import type { SapatamuEditorDocumentV3, SapatamuEditorPage } from '@/types/sapatamu'
 import type { WeddingDetail, WeddingThemeId } from '@/types/wedding'
 
+// ─── Preload helpers ──────────────────────────────────────────────────────────
+
+function preloadImage(src: string): Promise<void> {
+  return new Promise((resolve) => {
+    if (!src) { resolve(); return }
+    const img = new Image()
+    img.onload = () => resolve()
+    img.onerror = () => resolve() // jangan block loading kalau satu gambar gagal
+    img.src = src
+  })
+}
+
+function collectCriticalImageUrls(
+  doc: SapatamuEditorDocumentV3 | null,
+  themeId: string,
+): string[] {
+  const urls: string[] = []
+
+  // Backdrop tema
+  const backdrop = PUBLIC_SOURCE_THEME_BACKDROPS[themeId]
+  if (backdrop) urls.push(resolveApiAssetUrl(backdrop))
+
+  if (!doc) return urls
+
+  // Global background
+  if (doc.editor.globalBackground && doc.editor.globalBackgroundDetails?.type !== 'video') {
+    urls.push(resolveApiAssetUrl(doc.editor.globalBackground))
+  }
+
+  // Background tiap halaman (hanya 3 halaman pertama yang aktif)
+  doc.editor.pages
+    .filter((p) => p.isActive)
+    .slice(0, 3)
+    .forEach((page) => {
+      if (page.data.background && page.data.backgroundDetails?.type !== 'video') {
+        urls.push(resolveApiAssetUrl(page.data.background))
+      }
+      // Gambar utama di halaman opening
+      if (page.family === 'opening') {
+        const img1 = page.data.image1 as { type?: string; content?: string } | undefined
+        if (img1?.type === 'image' && img1.content) {
+          urls.push(resolveApiAssetUrl(img1.content))
+        }
+      }
+    })
+
+  // Preview image (cover)
+  if (doc.meta?.imageUrl) urls.push(resolveApiAssetUrl(doc.meta.imageUrl))
+
+  // Deduplicate
+  return [...new Set(urls.filter(Boolean))]
+}
+
+// ─── Loading Screen ───────────────────────────────────────────────────────────
+
+type InvitationLoadingScreenProps = {
+  primaryColor?: string
+  accentColor?: string
+  brideName?: string
+  groomName?: string
+  progress: number // 0–100
+}
+
+function InvitationLoadingScreen({
+  primaryColor = '#8B5E3C',
+  accentColor = '#C9A96E',
+  brideName,
+  groomName,
+  progress,
+}: InvitationLoadingScreenProps) {
+  const hasBrideGroom = brideName || groomName
+
+  return (
+    <motion.div
+      key="invitation-loading"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0, transition: { duration: 0.6, ease: 'easeInOut' } }}
+      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center"
+      style={{ backgroundColor: primaryColor }}
+    >
+      {/* Ornamen sudut */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div
+          className="absolute -left-8 -top-8 size-40 rounded-full opacity-10"
+          style={{ background: accentColor }}
+        />
+        <div
+          className="absolute -bottom-8 -right-8 size-56 rounded-full opacity-10"
+          style={{ background: accentColor }}
+        />
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7, delay: 0.1 }}
+        className="relative z-10 flex flex-col items-center gap-6 px-8 text-center"
+      >
+        {/* Ikon hati animasi */}
+        <motion.div
+          animate={{ scale: [1, 1.15, 1] }}
+          transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <Heart
+            className="size-10 fill-current"
+            style={{ color: accentColor }}
+          />
+        </motion.div>
+
+        {/* Nama mempelai */}
+        {hasBrideGroom ? (
+          <div style={{ color: accentColor }}>
+            <p className="text-xs uppercase tracking-[0.25em] opacity-60 mb-2">
+              The Wedding Of
+            </p>
+            <p className="text-2xl font-light tracking-wide">
+              {groomName || '—'}
+            </p>
+            <p className="text-sm opacity-50 my-1">&amp;</p>
+            <p className="text-2xl font-light tracking-wide">
+              {brideName || '—'}
+            </p>
+          </div>
+        ) : (
+          <p
+            className="text-sm uppercase tracking-[0.2em] opacity-60"
+            style={{ color: accentColor }}
+          >
+            Memuat undangan…
+          </p>
+        )}
+
+        {/* Progress bar */}
+        <div className="w-48 overflow-hidden rounded-full" style={{ height: 2, background: `${accentColor}30` }}>
+          <motion.div
+            className="h-full rounded-full"
+            style={{ background: accentColor }}
+            initial={{ width: '0%' }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
+          />
+        </div>
+
+        <p
+          className="text-[10px] uppercase tracking-[0.2em] opacity-40"
+          style={{ color: accentColor }}
+        >
+          Rekavia Invitation
+        </p>
+      </motion.div>
+    </motion.div>
+  )
+}
+
 type InvitationRow = {
   id: string
   template_id: string | null
@@ -340,6 +495,7 @@ export function TenantWeddingPage() {
   const [youtubeEmbedSrc, setYoutubeEmbedSrc] = useState('')
   const [pageRunKeys, setPageRunKeys] = useState<Record<number, number>>({})
   const [isLoading, setIsLoading] = useState(true)
+  const [loadingProgress, setLoadingProgress] = useState(0)
   const [error, setError] = useState('')
   const [invitationId, setInvitationId] = useState<string | null>(null)
   const [selectedTheme, setSelectedTheme] = useState<WeddingThemeId>('malay-ethnic-red-ruby')
@@ -437,9 +593,12 @@ export function TenantWeddingPage() {
 
     const loadInvitation = async () => {
       setIsLoading(true)
+      setLoadingProgress(0)
       setError('')
 
       try {
+        // ── Step 1: Resolve slug (10%) ──────────────────────────────
+        setLoadingProgress(10)
         const slugResponse = await dataList<InvitationSlugRow>('invitation-slugs', {
           where: { slug, is_primary: true },
           limit: 1,
@@ -450,6 +609,8 @@ export function TenantWeddingPage() {
           throw new Error('Undangan tidak ditemukan')
         }
 
+        // ── Step 2: Fetch data undangan (30%) ───────────────────────
+        setLoadingProgress(30)
         const invitationResponse = await dataDetail<InvitationRow>('invitations', slugRow.invitation_id)
         const [contentResponse, mediaResponse, greetingResponse] = await Promise.all([
           dataList<InvitationContentRow>('invitation-contents', {
@@ -469,6 +630,8 @@ export function TenantWeddingPage() {
           }),
         ])
 
+        // ── Step 3: Validasi & layout (55%) ─────────────────────────
+        setLoadingProgress(55)
         const invitation = invitationResponse.data
         if (!invitation || invitation.status !== 'published') {
           setInvitationId(slugRow.invitation_id)
@@ -503,8 +666,28 @@ export function TenantWeddingPage() {
           invitation?.template_id ?? null,
         )
 
+        // ── Step 4: Preload gambar critical (55% → 90%) ─────────────
+        const nextTheme = content?.selectedTheme ?? 'malay-ethnic-red-ruby'
+        const criticalUrls = collectCriticalImageUrls(reconciledEditorDocument, nextTheme)
+
+        if (criticalUrls.length > 0) {
+          let loaded = 0
+          await Promise.all(
+            criticalUrls.map((url) =>
+              preloadImage(url).then(() => {
+                loaded += 1
+                const preloadProgress = Math.round((loaded / criticalUrls.length) * 35)
+                setLoadingProgress(55 + preloadProgress)
+              }),
+            ),
+          )
+        }
+
+        // ── Step 5: Set state & selesai (100%) ──────────────────────
+        setLoadingProgress(100)
+
         setInvitationId(slugRow.invitation_id)
-        setSelectedTheme(content?.selectedTheme ?? 'malay-ethnic-red-ruby')
+        setSelectedTheme(nextTheme)
         setGallery(mediaResponse.data?.items ?? [])
         setGuestMessages((greetingResponse.data?.items ?? []).map((item) => ({
           id: item.id,
@@ -539,6 +722,8 @@ export function TenantWeddingPage() {
         setWeddingData(DEFAULT_WEDDING_DATA)
         setError('Undangan tidak tersedia atau belum dipublikasikan.')
       } finally {
+        // Beri jeda singkat agar progress bar 100% terlihat sebelum fade out
+        await new Promise((resolve) => setTimeout(resolve, 400))
         setIsLoading(false)
       }
     }
@@ -722,7 +907,17 @@ export function TenantWeddingPage() {
   }
 
   if (isLoading) {
-    return <div className="min-h-screen bg-background" />
+    return (
+      <AnimatePresence>
+        <InvitationLoadingScreen
+          primaryColor={theme.primaryColor}
+          accentColor={theme.accentColor}
+          brideName={weddingData.brideName}
+          groomName={weddingData.groomName}
+          progress={loadingProgress}
+        />
+      </AnimatePresence>
+    )
   }
 
   if (error) {
