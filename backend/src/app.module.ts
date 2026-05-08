@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
@@ -15,10 +16,26 @@ import { PaymentsModule } from './payments/payments.module';
 import { AdminModule } from './admin/admin.module';
 
 @Module({
-  imports: [ServeStaticModule.forRoot({
-    rootPath: join(__dirname, '..', 'uploads'),
-    serveRoot: '/uploads',
-  }), DatabaseModule, AuthModule, UsersModule, FilesModule, LoggerModule, DataModule, SapatamuModule, CmsModule, PaymentsModule, AdminModule],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'uploads'),
+      serveRoot: '/uploads',
+    }),
+    DatabaseModule,
+    AuthModule,
+    UsersModule,
+    FilesModule,
+    LoggerModule,
+    DataModule,
+    SapatamuModule,
+    CmsModule,
+    PaymentsModule,
+    AdminModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

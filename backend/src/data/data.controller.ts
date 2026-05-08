@@ -1,9 +1,14 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Res, UseGuards } from '@nestjs/common';
 import { Response } from 'express';
+import { Roles } from 'src/auth/decorators/roles/roles.decorator';
+import { JwtGuard } from 'src/auth/guards/jwt/jwt.guard';
+import { RolesGuard } from 'src/auth/guards/roles/roles.guard';
 import { DataService } from './data.service';
 import { DataListQuery } from './validation/data.validation';
 
 @Controller('data')
+@UseGuards(JwtGuard, RolesGuard)
+@Roles('admin')
 export class DataController {
   constructor(private readonly service: DataService) {}
 
