@@ -96,16 +96,18 @@ export class PakasirService {
     }
 
     try {
+      // Endpoint yang benar sesuai dokumentasi Pakasir
       const response = await fetch(
-        `${this.baseUrl}/transactioncreate/${method}`,
+        `${this.baseUrl}/transaction/create`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            api_key: this.apiKey,
             project: this.project,
             order_id: orderId,
             amount,
-            api_key: this.apiKey,
+            payment_method: method,
           }),
         },
       );
@@ -151,14 +153,14 @@ export class PakasirService {
 
     try {
       const params = new URLSearchParams({
-        project: this.project,
-        amount: String(amount),
-        order_id: orderId,
         api_key: this.apiKey,
+        project: this.project,
+        order_id: orderId,
+        amount: String(amount),
       });
 
       const response = await fetch(
-        `${this.baseUrl}/transactiondetail?${params.toString()}`,
+        `${this.baseUrl}/transaction/detail?${params.toString()}`,
       );
 
       if (!response.ok) return null;
@@ -175,14 +177,14 @@ export class PakasirService {
     if (!this.isConfigured) return false;
 
     try {
-      const response = await fetch(`${this.baseUrl}/transactioncancel`, {
+      const response = await fetch(`${this.baseUrl}/transaction/cancel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          api_key: this.apiKey,
           project: this.project,
           order_id: orderId,
           amount,
-          api_key: this.apiKey,
         }),
       });
 
