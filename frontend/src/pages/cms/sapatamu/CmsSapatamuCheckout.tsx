@@ -10,12 +10,12 @@ import { sapatamuApplyVoucher, sapatamuCreatePayment, sapatamuGetCart } from '@/
 import type { SapatamuCartData } from '@/types/sapatamu'
 
 const PAYMENT_METHODS = [
-  { id: 'qris', label: 'QRIS', description: 'Scan QR dari aplikasi pembayaran pilihan Anda.', logo: '/payment-logos/qris.svg' },
-  { id: 'bni_va', label: 'BNI Virtual Account', description: 'Transfer ke nomor virtual account BNI.', logo: '/payment-logos/bni.svg' },
-  { id: 'bri_va', label: 'BRI Virtual Account', description: 'Transfer ke nomor virtual account BRI.', logo: '/payment-logos/bri.svg' },
-  { id: 'mandiri_va', label: 'Mandiri Virtual Account', description: 'Transfer ke nomor virtual account Mandiri.', logo: '/payment-logos/mandiri.svg' },
-  { id: 'bca_va', label: 'BCA Virtual Account', description: 'Transfer ke nomor virtual account BCA.', logo: '/payment-logos/bca.svg' },
-  { id: 'bsi_va', label: 'BSI Virtual Account', description: 'Transfer ke nomor virtual account BSI.', logo: '/payment-logos/bsi.svg' },
+  { id: 'qris', label: 'QRIS', description: 'Scan QR dari aplikasi pembayaran pilihan Anda.', logo: '/payment-logos/QRIS LOGO.png' },
+  { id: 'bni_va', label: 'BNI Virtual Account', description: 'Transfer ke nomor virtual account BNI.', logo: '/payment-logos/BNI LOGO.png' },
+  { id: 'bri_va', label: 'BRI Virtual Account', description: 'Transfer ke nomor virtual account BRI.', logo: '/payment-logos/BRI LOGO.png' },
+  { id: 'mandiri_va', label: 'Mandiri Virtual Account', description: 'Transfer ke nomor virtual account Mandiri.', logo: '/payment-logos/MANDIRI LOGO.png' },
+  { id: 'bca_va', label: 'BCA Virtual Account', description: 'Transfer ke nomor virtual account BCA.', logo: '/payment-logos/BCA LOGO.png' },
+  { id: 'bsi_va', label: 'BSI Virtual Account', description: 'Transfer ke nomor virtual account BSI.', logo: '/payment-logos/BSI Logo.png' },
 ] as const
 
 export function CmsSapatamuCheckout() {

@@ -1,6 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="160" height="64" viewBox="0 0 160 64" role="img" aria-label="BNI">
-  <rect width="160" height="64" rx="14" fill="#fff"/>
-  <path d="M23 17h31l-8 30H15l8-30Z" fill="#f97316"/>
-  <path d="M31 24h21l-4 16H27l4-16Z" fill="#0f766e"/>
-  <text x="66" y="41" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="800" fill="#0f766e">BNI</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 80" role="img" aria-label="BNI">
+  <rect width="200" height="80" rx="12" fill="#ffffff"/>
+  <!-- BNI orange block logo -->
+  <rect x="14" y="14" width="52" height="52" rx="6" fill="#f47920"/>
+  <!-- BNI text inside block -->
+  <text x="40" y="49" font-family="Arial Black, Arial, sans-serif" font-size="22" font-weight="900" fill="#ffffff" text-anchor="middle">BNI</text>
+  <!-- 46 text -->
+  <text x="80" y="44" font-family="Arial Black, Arial, sans-serif" font-size="28" font-weight="900" fill="#f47920">46</text>
 </svg>

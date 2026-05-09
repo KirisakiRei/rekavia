@@ -65,6 +65,12 @@ import {
   type SapatamuEditorPage,
   type SapatamuEditorPatchOperation,
 } from './sapatamu-editor.helper';
+import {
+  isPakasirMethod,
+  PakasirService,
+  PakasirWebhookPayload,
+  type PakasirMethod,
+} from 'src/payments/pakasir.service';
 
 type AuthRequestUser = {
   accountId: string;
@@ -82,7 +88,7 @@ type GuestInput = {
 
 type TierCategory = 'basic' | 'premium' | 'vintage';
 
-type PaymentMethod = 'qris' | 'bni_va' | 'bri_va' | 'mandiri_va' | 'bca_va' | 'bsi_va';
+type PaymentMethod = PakasirMethod;
 type CartKind = 'activation' | 'theme_add_on';
 
 const TIER_ORDER: TierCategory[] = ['basic', 'premium', 'vintage'];
@@ -220,7 +226,7 @@ function isTierCategory(value: unknown): value is TierCategory {
 }
 
 function isPaymentMethod(value: unknown): value is PaymentMethod {
-  return value === 'qris' || value === 'bni_va' || value === 'bri_va' || value === 'mandiri_va' || value === 'bca_va' || value === 'bsi_va';
+  return isPakasirMethod(value);
 }
 
 function addDays(baseDate: Date, days: number): Date {
@@ -311,7 +317,10 @@ export function isInvitationThemeAccessActive(
 export class SapatamuService {
   private catalogReady = false;
 
-  constructor(private readonly db: DatabaseService) {}
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly pakasir: PakasirService,
+  ) {}
 
   private async getCurrentUser(authUser: AuthRequestUser): Promise<User> {
     if (authUser.data?.id) {
@@ -1159,40 +1168,38 @@ export class SapatamuService {
   }
 
   private buildMockPaymentPayload(method: PaymentMethod, orderId: string, total: number) {
-    const expiredAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+    // Delegasi ke PakasirService mock builder — tidak dipakai langsung lagi
+    // Tetap ada untuk backward compatibility jika dipanggil dari tempat lain
+    const expiredAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
     if (method === 'qris') {
       return {
         paymentMethod: method,
-        paymentNumber: `00020101021126660014ID.CO.QRIS.WWW0118936009180000000000${orderId.slice(-6)}520454995303360540${total}5802ID5910REKAVIA6013JAKARTA PUSAT6105103106304ABCD`,
-        instructions: [
-          'Buka aplikasi mobile banking atau e-wallet yang mendukung QRIS.',
-          'Scan kode QRIS atau salin QR string yang tersedia.',
-          'Pastikan nominal pembayaran sesuai sebelum menyelesaikan transaksi.',
-        ],
+        paymentNumber: `00020101021226610016ID.CO.PAKASIR.MOCK0215MOCK${orderId.slice(-6)}0303UME51440014ID.CO.QRIS.WWW0215ID10243228429300303UME5204792953033605409${total}5802ID5907Pakasir6012KAB. KEBUMEN61055439262230519MOCK${Date.now()}6304ABCD`,
+        instructions: PakasirService.buildInstructions(method),
         expiredAt,
+        isMock: true,
       };
     }
 
-    const vaPrefixes: Record<Exclude<PaymentMethod, 'qris'>, string> = {
+    const vaPrefixes: Record<string, string> = {
       bni_va: '9888',
       bri_va: '7777',
-      mandiri_va: '8899',
-      bca_va: '3901',
-      bsi_va: '9009',
+      cimb_niaga_va: '8001',
+      sampoerna_va: '8002',
+      bnc_va: '8003',
+      maybank_va: '8004',
+      permata_va: '8005',
+      atm_bersama_va: '8006',
+      artha_graha_va: '8007',
     };
 
     return {
       paymentMethod: method,
-      paymentNumber: `${vaPrefixes[method]}${Date.now()
-        .toString()
-        .slice(-10)}`,
-      instructions: [
-        'Masuk ke mobile banking atau ATM bank terkait.',
-        'Pilih menu Virtual Account lalu masukkan nomor VA.',
-        'Pastikan nominal sesuai dan selesaikan pembayaran sebelum timer habis.',
-      ],
+      paymentNumber: `${vaPrefixes[method] ?? '9999'}${Date.now().toString().slice(-10)}`,
+      instructions: PakasirService.buildInstructions(method),
       expiredAt,
+      isMock: true,
     };
   }
 
@@ -2920,10 +2927,16 @@ export class SapatamuService {
     }
 
     const totalAmount = Number(order.total_amount);
-    const paymentPayload = this.buildMockPaymentPayload(method, order.id, totalAmount);
     const orderItems = sortThemeAddonOrderItemsForFulfillment(order.order_items);
     const item = orderItems[0];
     const itemMetadata = parseJsonObject(item.metadata);
+
+    // ── Call Pakasir API ──────────────────────────────────────────────────────
+    const pakasirResult = await this.pakasir.createTransaction(
+      method,
+      order.checkout_token, // pakai checkout_token sebagai order_id di Pakasir (unik & readable)
+      totalAmount,
+    );
 
     await this.db.$transaction(async (tx) => {
       await tx.payment.updateMany({
@@ -2942,10 +2955,18 @@ export class SapatamuService {
           order_id: order.id,
           method,
           status: PaymentStatus.pending,
-          provider_ref: `mock-${order.id}-${Date.now()}`,
-          amount: totalAmount,
+          // provider_ref = checkout_token agar bisa di-lookup saat webhook masuk
+          provider_ref: order.checkout_token,
+          amount: pakasirResult.totalPayment, // amount yang harus dibayar (termasuk fee)
           metadata: {
-            ...paymentPayload,
+            paymentMethod: pakasirResult.paymentMethod,
+            paymentNumber: pakasirResult.paymentNumber,
+            instructions: PakasirService.buildInstructions(method),
+            expiredAt: pakasirResult.expiredAt,
+            fee: pakasirResult.fee,
+            totalPayment: pakasirResult.totalPayment,
+            originalAmount: totalAmount,
+            isMock: pakasirResult.isMock,
             invitationId,
             kind:
               typeof itemMetadata.kind === 'string'
@@ -2974,7 +2995,7 @@ export class SapatamuService {
       await tx.order.update({
         where: { id: order.id },
         data: {
-          expired_at: new Date(paymentPayload.expiredAt),
+          expired_at: new Date(pakasirResult.expiredAt),
         },
       });
     });
@@ -3031,10 +3052,17 @@ export class SapatamuService {
       invitationId:
         typeof metadata.invitationId === 'string' ? metadata.invitationId : null,
       status: payment?.status ?? order.status,
+      orderStatus: order.status,
       amount: Number(order.total_amount),
       originalAmount: Number(item.subtotal),
       discountAmount: toNumber(metadata.discountAmount, 0),
       voucherCode: typeof metadata.voucherCode === 'string' ? metadata.voucherCode : null,
+      isExpired: order.status === 'expired' || (
+        order.expired_at !== null &&
+        order.expired_at !== undefined &&
+        new Date(order.expired_at) < new Date() &&
+        order.status === 'pending'
+      ),
       package: {
         id: item.package.id,
         code: item.package.code,
@@ -3060,6 +3088,7 @@ export class SapatamuService {
               ? paymentMetadata.instructions
               : [],
             paidAt: payment.paid_at?.toISOString() ?? null,
+            isMock: paymentMetadata.isMock === true,
           }
         : null,
     };
@@ -3322,10 +3351,366 @@ export class SapatamuService {
   }
 
   async handlePakasirWebhook(payload: Record<string, unknown>) {
+    const webhookPayload: PakasirWebhookPayload = {
+      amount: typeof payload.amount === 'number' ? payload.amount : Number(payload.amount ?? 0),
+      order_id: cleanString(payload.order_id),
+      project: cleanString(payload.project),
+      status: cleanString(payload.status),
+      payment_method: cleanString(payload.payment_method),
+      completed_at: cleanString(payload.completed_at),
+    };
+
+    // ── Verifikasi webhook ────────────────────────────────────────────────────
+    const verification = await this.pakasir.verifyWebhook(webhookPayload);
+    if (!verification.valid) {
+      return {
+        received: true,
+        processed: false,
+        reason: verification.reason ?? 'Webhook tidak valid',
+      };
+    }
+
+    // ── Cari order berdasarkan checkout_token (= order_id di Pakasir) ─────────
+    const order = await this.db.order.findFirst({
+      where: {
+        checkout_token: webhookPayload.order_id,
+        deleted_at: null,
+      },
+      include: {
+        order_items: {
+          where: { deleted_at: null },
+          include: { package: true, template: true },
+          orderBy: { created_at: 'desc' },
+        },
+        payments: {
+          where: { deleted_at: null },
+          orderBy: { created_at: 'desc' },
+        },
+      },
+    });
+
+    if (!order) {
+      return {
+        received: true,
+        processed: false,
+        reason: `Order tidak ditemukan untuk checkout_token: ${webhookPayload.order_id}`,
+      };
+    }
+
+    const payment = order.payments[0];
+    if (!payment) {
+      return {
+        received: true,
+        processed: false,
+        reason: 'Payment record tidak ditemukan',
+      };
+    }
+
+    // ── Idempotency — jangan proses ulang jika sudah paid ────────────────────
+    if (order.status === 'paid' || payment.status === PaymentStatus.paid) {
+      return {
+        received: true,
+        processed: false,
+        reason: 'Order sudah diproses sebelumnya',
+        orderId: order.id,
+      };
+    }
+
+    // ── Cek expired ───────────────────────────────────────────────────────────
+    if (order.expired_at && new Date(order.expired_at) < new Date()) {
+      // Update status ke expired jika belum
+      await this.db.order.update({
+        where: { id: order.id },
+        data: { status: 'expired' },
+      });
+      return {
+        received: true,
+        processed: false,
+        reason: 'Order sudah expired',
+        orderId: order.id,
+      };
+    }
+
+    // ── Verifikasi amount ─────────────────────────────────────────────────────
+    const expectedAmount = Number(payment.amount);
+    if (webhookPayload.amount !== expectedAmount) {
+      return {
+        received: true,
+        processed: false,
+        reason: `Amount tidak cocok: webhook=${webhookPayload.amount}, expected=${expectedAmount}`,
+        orderId: order.id,
+      };
+    }
+
+    // ── Jalankan fulfillment (sama dengan mockCompletePayment) ────────────────
+    const paymentMetadata = parseJsonObject(payment.metadata);
+    const orderItems = sortThemeAddonOrderItemsForFulfillment(order.order_items);
+    const item = orderItems[0];
+
+    if (!item) {
+      return {
+        received: true,
+        processed: false,
+        reason: 'Order items tidak ditemukan',
+        orderId: order.id,
+      };
+    }
+
+    const itemMetadata = parseJsonObject(item.metadata);
+    const voucherCode = cleanString(itemMetadata.voucherCode).toUpperCase();
+    const discountAmount = toNumber(itemMetadata.discountAmount, 0);
+    const invitationId = cleanString(itemMetadata.invitationId);
+    const kind: CartKind = cleanString(itemMetadata.kind) === CART_KIND_THEME_ADDON
+      ? CART_KIND_THEME_ADDON
+      : CART_KIND_ACTIVATION;
+
+    if (!invitationId) {
+      return {
+        received: true,
+        processed: false,
+        reason: 'invitationId tidak ditemukan di payment metadata',
+        orderId: order.id,
+      };
+    }
+
+    const invitation = await this.db.invitation.findFirst({
+      where: { id: invitationId, deleted_at: null },
+      include: {
+        license: { include: { package: true } },
+        template: true,
+        invitation_theme_accesses: true,
+      },
+    });
+
+    if (!invitation) {
+      return {
+        received: true,
+        processed: false,
+        reason: `Invitation ${invitationId} tidak ditemukan`,
+        orderId: order.id,
+      };
+    }
+
+    const currentContent = await this.getCurrentContent(invitation.id);
+    const paidAt = webhookPayload.completed_at
+      ? new Date(webhookPayload.completed_at)
+      : new Date();
+
+    let addonContent: SapatamuEditorDocumentV3 | null = null;
+    let addonFirstTemplateId: string | null = null;
+    const addonItems = orderItems.filter(
+      (orderItem) => parseJsonObject(orderItem.metadata).kind === CART_KIND_THEME_ADDON,
+    );
+
+    if (kind === CART_KIND_THEME_ADDON) {
+      const firstAddonItem = addonItems[0];
+      if (firstAddonItem) {
+        addonFirstTemplateId = firstAddonItem.template_id;
+        let nextContent = buildContentForThemeSwitch({
+          themeId: firstAddonItem.template.code,
+          existing: currentContent.content,
+          requiredTierCategory: this.getTierCategoryFromTheme(firstAddonItem.template),
+        });
+        nextContent = await this.applyEditorDefaultsFromDb(firstAddonItem.template_id, nextContent);
+        nextContent = await this.applyTemplateAssetsFromDb(firstAddonItem.template_id, nextContent);
+        addonContent = nextContent;
+      }
+    }
+
+    await this.db.$transaction(async (tx) => {
+      // ── Race condition guard — atomic update dengan kondisi status pending ──
+      // Jika dua webhook masuk bersamaan, hanya satu yang berhasil update
+      // karena updateMany dengan where status='pending' hanya akan match sekali
+      const lockResult = await tx.order.updateMany({
+        where: {
+          id: order.id,
+          status: 'pending', // hanya update jika masih pending
+          deleted_at: null,
+        },
+        data: { status: 'paid' },
+      });
+
+      // Jika count = 0, berarti order sudah diproses oleh request lain
+      if (lockResult.count === 0) {
+        throw new Error('ALREADY_PROCESSED');
+      }
+
+      // Update payment status
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: {
+          status: PaymentStatus.paid,
+          paid_at: paidAt,
+          provider_ref: payment.provider_ref,
+          metadata: {
+            ...(paymentMetadata as object),
+            pakasirCompletedAt: webhookPayload.completed_at,
+            pakasirPaymentMethod: webhookPayload.payment_method,
+          },
+        },
+      });
+
+      // Redeem voucher jika ada
+      if (voucherCode && discountAmount > 0) {
+        const voucher = await tx.voucher.findFirst({
+          where: { code: voucherCode, deleted_at: null },
+        });
+        if (voucher) {
+          const alreadyRedeemed = await tx.voucherRedemption.findFirst({
+            where: { voucher_id: voucher.id, order_id: order.id },
+          });
+          if (!alreadyRedeemed) {
+            await tx.voucherRedemption.create({
+              data: {
+                voucher_id: voucher.id,
+                user_id: order.user_id,
+                order_id: order.id,
+                discount_amount: discountAmount,
+                metadata: { source: 'pakasir_webhook', orderItemId: item.id },
+              },
+            });
+          }
+        }
+      }
+
+      // Fulfillment theme addon
+      if (kind === CART_KIND_THEME_ADDON) {
+        for (const addonItem of addonItems) {
+          const existingLicense = await tx.userTemplateLicense.findFirst({
+            where: { order_item_id: addonItem.id, deleted_at: null },
+          });
+          const license = existingLicense ?? (await tx.userTemplateLicense.create({
+            data: {
+              user_id: order.user_id,
+              template_id: addonItem.template_id,
+              package_id: addonItem.package_id,
+              order_item_id: addonItem.id,
+              status: 'active',
+            },
+          }));
+
+          const existingAccess = await tx.invitationThemeAccess.findFirst({
+            where: { source_order_item_id: addonItem.id, deleted_at: null },
+          });
+          if (!existingAccess) {
+            await tx.invitationThemeAccess.create({
+              data: {
+                user_id: order.user_id,
+                invitation_id: invitation.id,
+                template_id: addonItem.template_id,
+                user_template_license_id: license.id,
+                source_order_item_id: addonItem.id,
+                access_type: 'addon_owner',
+                starts_at: paidAt,
+                expires_at: null,
+              },
+            });
+          }
+        }
+
+        if (addonContent && addonFirstTemplateId && invitation.template_id !== addonFirstTemplateId) {
+          await this.saveContentVersion({
+            tx,
+            invitationId: invitation.id,
+            userId: order.user_id,
+            nextContent: addonContent,
+          });
+          await tx.invitation.update({
+            where: { id: invitation.id },
+            data: {
+              template_id: addonFirstTemplateId,
+              title: buildInvitationTitleFromContent(addonContent),
+              groom_name: cleanString(addonContent.profiles[0]?.fullName) || null,
+              bride_name: cleanString(addonContent.profiles[1]?.fullName) || null,
+            },
+          });
+        }
+        return;
+      }
+
+      // Fulfillment activation
+      const existingLicense = await tx.userTemplateLicense.findFirst({
+        where: { order_item_id: item.id, deleted_at: null },
+      });
+      const license = existingLicense ?? (await tx.userTemplateLicense.create({
+        data: {
+          user_id: order.user_id,
+          template_id: invitation.template_id,
+          package_id: item.package_id,
+          order_item_id: item.id,
+          status: 'active',
+        },
+      }));
+
+      const existingAccess = await tx.invitationThemeAccess.findFirst({
+        where: { source_order_item_id: item.id, deleted_at: null },
+      });
+      if (!existingAccess) {
+        await tx.invitationThemeAccess.create({
+          data: {
+            user_id: order.user_id,
+            invitation_id: invitation.id,
+            template_id: invitation.template_id,
+            user_template_license_id: license.id,
+            source_order_item_id: item.id,
+            access_type: 'primary',
+            starts_at: paidAt,
+            expires_at: null,
+          },
+        });
+      }
+
+      if (invitation.status === 'published' && invitation.license_id) {
+        return;
+      }
+
+      const nextContent = mergeContentPatch(currentContent.content, {
+        albumSettings: {
+          basePhotoQuota: this.getBasePhotoQuota(item.package),
+        },
+        settings: {
+          ...currentContent.content.settings,
+          commerce: {
+            ...currentContent.content.settings.commerce,
+            selectedPackageCode: item.package.code,
+            activationState: 'active',
+          },
+          activatedAtDisplay:
+            currentContent.content.settings.activatedAtDisplay ?? paidAt.toISOString(),
+        },
+      });
+
+      await this.saveContentVersion({
+        tx,
+        invitationId: invitation.id,
+        userId: order.user_id,
+        nextContent,
+      });
+
+      await tx.invitation.update({
+        where: { id: invitation.id },
+        data: {
+          license_id: license.id,
+          status: 'published',
+          published_at: invitation.published_at ?? paidAt,
+        },
+      });
+    }).catch((err: Error) => {
+      if (err.message === 'ALREADY_PROCESSED') {
+        // Race condition — request lain sudah proses duluan, ini normal
+        return;
+      }
+      throw err;
+    });
+
+    // Cek apakah order benar-benar sudah paid setelah transaksi
+    const finalOrder = await this.db.order.findUnique({ where: { id: order.id } });
+
     return {
       received: true,
-      orderId: cleanString(payload.order_id),
-      status: cleanString(payload.status) || 'pending',
+      processed: finalOrder?.status === 'paid',
+      orderId: order.id,
+      invitationId,
     };
   }
 

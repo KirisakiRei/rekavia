@@ -1,6 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="160" height="64" viewBox="0 0 160 64" role="img" aria-label="BCA">
-  <rect width="160" height="64" rx="14" fill="#fff"/>
-  <path d="M34 16c8 0 15 5 18 12 7 1 12 6 12 13 0 8-7 14-16 14H30c-10 0-18-7-18-16 0-8 6-15 15-16 2-4 4-7 7-7Z" fill="#0b5cab"/>
-  <path d="M30 29h19v6H30v-6Zm0 10h23v6H30v-6Z" fill="#fff"/>
-  <text x="76" y="42" font-family="Arial, Helvetica, sans-serif" font-size="29" font-weight="800" fill="#0b5cab">BCA</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 80" role="img" aria-label="BCA">
+  <rect width="200" height="80" rx="12" fill="#ffffff"/>
+  <!-- BCA shield/flower icon -->
+  <rect x="12" y="12" width="52" height="56" rx="10" fill="none" stroke="#1a5fa8" stroke-width="3"/>
+  <!-- Flower petals -->
+  <circle cx="38" cy="30" r="7" fill="#1a5fa8"/>
+  <circle cx="28" cy="38" r="7" fill="#1a5fa8"/>
+  <circle cx="48" cy="38" r="7" fill="#1a5fa8"/>
+  <circle cx="38" cy="46" r="7" fill="#1a5fa8"/>
+  <!-- Center -->
+  <circle cx="38" cy="38" r="6" fill="#1a5fa8"/>
+  <!-- GRUP BCA text -->
+  <text x="38" y="60" font-family="Arial, sans-serif" font-size="7" font-weight="700" fill="#1a5fa8" text-anchor="middle">GRUP BCA</text>
+  <!-- BCA text -->
+  <text x="80" y="52" font-family="Arial Black, Arial, sans-serif" font-size="38" font-weight="900" fill="#1a5fa8" letter-spacing="-1">BCA</text>
 </svg>

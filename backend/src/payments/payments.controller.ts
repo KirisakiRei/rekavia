@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   Param,
   Post,
   Request,
@@ -52,17 +53,33 @@ export class PaymentsController {
     });
   }
 
+  /**
+   * Webhook dari Pakasir — selalu return 200 agar Pakasir tidak retry.
+   * Error internal ditangani di dalam service dan di-log.
+   */
   @Post('webhooks/pakasir')
+  @HttpCode(200)
   async pakasirWebhook(
     @Body() body: Record<string, unknown>,
     @Res() res: Response,
   ): Promise<Response> {
-    const data = await this.sapatamuService.handlePakasirWebhook(body);
-    return res.status(200).send({
-      status: 'success',
-      code: 200,
-      message: 'Webhook diterima',
-      data,
-    });
+    try {
+      const data = await this.sapatamuService.handlePakasirWebhook(body);
+      return res.status(200).send({
+        status: 'success',
+        code: 200,
+        message: 'Webhook diterima',
+        data,
+      });
+    } catch {
+      // Tetap return 200 ke Pakasir — error sudah di-log di service layer
+      // Jangan return 5xx karena Pakasir akan retry terus
+      return res.status(200).send({
+        status: 'success',
+        code: 200,
+        message: 'Webhook diterima',
+        data: { received: true, processed: false },
+      });
+    }
   }
 }
