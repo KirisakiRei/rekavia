@@ -7,6 +7,13 @@ export const PAKASIR_METHODS = [
   'qris',
   'bni_va',
   'bri_va',
+  'cimb_niaga_va',
+  'sampoerna_va',
+  'bnc_va',
+  'maybank_va',
+  'permata_va',
+  'atm_bersama_va',
+  'artha_graha_va',
   'mandiri_va',
   'bca_va',
   'bsi_va',
@@ -96,85 +103,65 @@ export class PakasirService {
     }
 
     try {
-      // Try multiple endpoint variations based on common payment gateway patterns
-      const endpoints = [
-        '/transaction/create',
-        '/transactioncreate',
-        '/api/transaction/create',
-        '/v1/transaction/create',
-      ];
+      const endpoint = `/transactioncreate/${method}`;
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          api_key: this.apiKey,
+          project: this.project,
+          order_id: orderId,
+          amount,
+        }),
+      });
 
-      let lastError: { status: number; text: string } | null = null;
+      const responseText = await response.text().catch(() => '');
 
-      for (const endpoint of endpoints) {
-        try {
-          const response = await fetch(
-            `${this.baseUrl}${endpoint}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                api_key: this.apiKey,
-                project: this.project,
-                order_id: orderId,
-                amount,
-                payment_method: method,
-              }),
-            },
-          );
-
-          if (response.ok) {
-            const data = (await response.json()) as PakasirCreateResponse;
-            const p = data.payment;
-
-            this.logger.log(
-              `Pakasir transaction created successfully using endpoint: ${endpoint}`,
-              'PakasirService.createTransaction',
-            );
-
-            return {
-              paymentNumber: p.payment_number,
-              paymentMethod: p.payment_method,
-              amount: p.amount,
-              fee: p.fee,
-              totalPayment: p.total_payment,
-              expiredAt: p.expired_at,
-              isMock: false,
-            };
-          }
-
-          // Store error for logging
-          const text = await response.text().catch(() => '');
-          lastError = { status: response.status, text };
-
-          // If not 404, break and throw error (other errors are not endpoint issues)
-          if (response.status !== 404) {
-            break;
-          }
-        } catch (err) {
-          // Network error, try next endpoint
-          continue;
-        }
+      if (!response.ok) {
+        this.logger.error(
+          `Pakasir API error ${response.status}: ${responseText || 'No response'}`,
+          undefined,
+          'PakasirService.createTransaction',
+        );
+        this.logger.error(
+          `Request details - Method: ${method}, Project: ${this.project}, OrderId: ${orderId}, Amount: ${amount}`,
+          undefined,
+          'PakasirService.createTransaction',
+        );
+        throw new Error(`Pakasir API error: ${response.status}`);
       }
 
-      // All endpoints failed
-      this.logger.error(
-        `Pakasir API error ${lastError?.status ?? 'unknown'}: ${lastError?.text ?? 'No response'}`,
-        undefined,
-        'PakasirService.createTransaction',
-      );
-      this.logger.error(
-        `Request details - Method: ${method}, Project: ${this.project}, OrderId: ${orderId}, Amount: ${amount}`,
-        undefined,
-        'PakasirService.createTransaction',
-      );
-      this.logger.error(
-        `All endpoints tried: ${endpoints.join(', ')}`,
-        undefined,
-        'PakasirService.createTransaction',
-      );
-      
-      throw new Error(`Pakasir API error: ${lastError?.status ?? 'unknown'}`);
+      let data: PakasirCreateResponse | null = null;
+      try {
+        data = JSON.parse(responseText) as PakasirCreateResponse;
+      } catch {
+        this.logger.error(
+          `Pakasir API response tidak valid: ${responseText || 'Empty response'}`,
+          undefined,
+          'PakasirService.createTransaction',
+        );
+        throw new Error('Pakasir API response invalid');
+      }
+
+      const p = data.payment;
+      if (!p) {
+        this.logger.error(
+          `Pakasir API response missing payment: ${responseText || 'Empty response'}`,
+          undefined,
+          'PakasirService.createTransaction',
+        );
+        throw new Error('Pakasir API response invalid');
+      }
+
+      return {
+        paymentNumber: p.payment_number,
+        paymentMethod: p.payment_method,
+        amount: p.amount,
+        fee: p.fee,
+        totalPayment: p.total_payment,
+        expiredAt: p.expired_at,
+        isMock: false,
+      };
     } catch (error) {
       this.logger.error(
         `Gagal menghubungi Pakasir: ${error instanceof Error ? error.message : String(error)}`,
@@ -201,7 +188,7 @@ export class PakasirService {
       });
 
       const response = await fetch(
-        `${this.baseUrl}/transaction/detail?${params.toString()}`,
+        `${this.baseUrl}/transactiondetail?${params.toString()}`,
       );
 
       if (!response.ok) return null;
@@ -218,7 +205,7 @@ export class PakasirService {
     if (!this.isConfigured) return false;
 
     try {
-      const response = await fetch(`${this.baseUrl}/transaction/cancel`, {
+      const response = await fetch(`${this.baseUrl}/transactioncancel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
