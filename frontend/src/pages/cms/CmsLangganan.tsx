@@ -44,6 +44,7 @@ type OrderRow = {
   user_id: string
   status: 'pending' | 'paid' | 'failed' | 'expired' | 'cancelled'
   total_amount: number | string
+  checkout_token?: string
   created_at: string
 }
 
@@ -52,6 +53,7 @@ type PaymentRow = {
   order_id: string
   status: 'pending' | 'paid' | 'failed' | 'refunded'
   amount: number | string
+  metadata?: unknown
   created_at: string
   paid_at: string | null
 }
@@ -70,17 +72,29 @@ type ActiveSubscription = {
   tier: string
   price: number
   status: 'active' | 'revoked'
+  activatedAt: string
   expiresAt: string
   color: string
   cmsLink: string
+  features: string[]
+  templateName: string
+  packageCode: string
 }
 
 type PaymentHistory = {
   id: string
+  orderId: string
+  checkoutToken: string
   product: string
   amount: number
   status: string
+  statusColor: string
   date: string
+  paymentMethod: string
+  items: Array<{
+    name: string
+    price: number
+  }>
 }
 
 function toNumber(value: number | string | null | undefined): number {
@@ -178,6 +192,28 @@ export function CmsLangganan() {
       const expiresAt = new Date(activatedAt)
       expiresAt.setFullYear(expiresAt.getFullYear() + 1)
 
+      // Build features based on package
+      const features: string[] = []
+      const packageCode = currentPackage?.code?.toLowerCase() ?? ''
+      
+      if (packageCode.includes('basic')) {
+        features.push('Undangan digital aktif 1 tahun')
+        features.push('Galeri foto hingga 50 foto')
+        features.push('RSVP & ucapan tamu')
+        features.push('Musik latar belakang')
+      } else if (packageCode.includes('premium')) {
+        features.push('Undangan digital aktif 1 tahun')
+        features.push('Galeri foto hingga 100 foto')
+        features.push('Video background')
+        features.push('RSVP & ucapan tamu')
+        features.push('Musik latar belakang')
+        features.push('Custom domain')
+      } else {
+        features.push('Undangan digital aktif 1 tahun')
+        features.push('Fitur lengkap sesuai paket')
+        features.push('RSVP & ucapan tamu')
+      }
+
       return {
         id: license.id,
         product: template?.name ?? productMeta.name,
@@ -185,9 +221,13 @@ export function CmsLangganan() {
         tier: currentPackage?.name ?? 'Paket Aktif',
         price: toNumber(currentPackage?.price),
         status: license.status,
+        activatedAt,
         expiresAt: expiresAt.toISOString(),
         color: productMeta.color,
         cmsLink: resolveCmsLink(template?.category),
+        features,
+        templateName: template?.name ?? 'Template',
+        packageCode: currentPackage?.code ?? '',
       }
     })
   }, [licenses, packages, templates])
@@ -197,38 +237,57 @@ export function CmsLangganan() {
       .filter((payment) => orders.some((order) => order.id === payment.order_id && order.user_id === user?.id))
       .map((payment) => {
         const order = orders.find((item) => item.id === payment.order_id)
-        const orderItem = orderItems.find((item) => item.order_id === payment.order_id)
-        const template = templates.find((item) => item.id === orderItem?.template_id)
-        const currentPackage = packages.find((item) => item.id === orderItem?.package_id)
+        const relatedOrderItems = orderItems.filter((item) => item.order_id === payment.order_id)
+        
+        // Build items detail
+        const items = relatedOrderItems.map((orderItem) => {
+          const template = templates.find((t) => t.id === orderItem.template_id)
+          const pkg = packages.find((p) => p.id === orderItem.package_id)
+          return {
+            name: [template?.name, pkg?.name].filter(Boolean).join(' - ') || 'Item',
+            price: toNumber(pkg?.price),
+          }
+        })
+
+        // Get payment method from metadata
+        const paymentMetadata = payment.metadata as Record<string, unknown> | null
+        const paymentMethod = typeof paymentMetadata?.paymentMethod === 'string' 
+          ? paymentMetadata.paymentMethod 
+          : 'N/A'
+        
+        // Format payment method label
+        const methodLabels: Record<string, string> = {
+          qris: 'QRIS',
+          bni_va: 'BNI Virtual Account',
+          bri_va: 'BRI Virtual Account',
+          mandiri_va: 'Mandiri Virtual Account',
+          bca_va: 'BCA Virtual Account',
+          bsi_va: 'BSI Virtual Account',
+        }
+        const methodLabel = methodLabels[paymentMethod] ?? paymentMethod.toUpperCase()
+
+        // Status color
+        const statusColor = payment.status === 'paid' 
+          ? 'text-success' 
+          : payment.status === 'pending' 
+          ? 'text-warning' 
+          : 'text-destructive'
 
         return {
           id: payment.id,
-          product: [template?.name, currentPackage?.name].filter(Boolean).join(' - ') || 'Pembayaran Paket',
+          orderId: order?.id ?? '',
+          checkoutToken: (order?.checkout_token as string) ?? '',
+          product: items.length > 0 ? items[0].name : 'Pembayaran Paket',
           amount: toNumber(payment.amount || order?.total_amount),
           status: payment.status === 'paid' ? 'Berhasil' : payment.status === 'pending' ? 'Pending' : 'Gagal',
+          statusColor,
           date: payment.paid_at || payment.created_at,
+          paymentMethod: methodLabel,
+          items,
         }
       })
       .sort((left, right) => new Date(right.date).getTime() - new Date(left.date).getTime())
   }, [orders, orderItems, packages, payments, templates, user?.id])
-
-  const availableProducts = useMemo(() => {
-    const activeCategories = new Set(
-      activeSubscriptions.map((subscription) => {
-        const product = PRODUCTS.find((item) => item.name === subscription.product || subscription.cmsLink.includes(item.id))
-        return product?.id
-      }),
-    )
-
-    return PRODUCTS.filter((product) => !activeCategories.has(product.id)).map((product) => ({
-      id: product.id,
-      name: product.name,
-      tagline: product.tagline,
-      icon: product.icon,
-      color: product.color,
-      startPrice: product.id === 'sapatamu' ? 150000 : product.id === 'etalasepro' ? 200000 : product.id === 'citrakorpora' ? 300000 : 250000,
-    }))
-  }, [activeSubscriptions])
 
   return (
     <CmsLayout sidebarLinks={CMS_SIDEBAR_LINKS.general} title="Langganan" subtitle="Kelola paket dan pembayaran">
@@ -247,45 +306,73 @@ export function CmsLangganan() {
                   transition={{ duration: 0.4, delay: index * 0.1 }}
                   className="bg-card border border-border rounded-xl p-5 lg:p-6"
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    <div className="flex items-start gap-4">
                       <div
-                        className="w-12 h-12 rounded-xl flex items-center justify-center"
+                        className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
                         style={{ backgroundColor: `${subscription.color}12`, color: subscription.color }}
                       >
                         <Icon className="w-6 h-6" />
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h4 className="text-base font-heading text-foreground">{subscription.product}</h4>
                           <Badge className="text-[10px] border-0" style={{ backgroundColor: `${subscription.color}15`, color: subscription.color }}>
                             <Zap className="w-3 h-3 mr-0.5" />
                             {subscription.tier}
                           </Badge>
                         </div>
-                        <div className="flex items-center gap-3 mt-1.5">
+                        <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                           <span className="text-sm font-medium text-foreground">{formatRupiah(subscription.price)}/tahun</span>
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            Berakhir{' '}
-                            {new Date(subscription.expiresAt).toLocaleDateString('id-ID', {
-                              day: 'numeric',
-                              month: 'long',
-                              year: 'numeric',
-                            })}
+                          <span className="text-xs text-muted-foreground">•</span>
+                          <span className="text-xs text-muted-foreground">
+                            Kode: {subscription.packageCode.toUpperCase()}
                           </span>
+                        </div>
+                        
+                        {/* Features */}
+                        <div className="mt-3 space-y-1.5">
+                          {subscription.features.map((feature, idx) => (
+                            <div key={idx} className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Check className="w-3 h-3 text-success shrink-0" />
+                              <span>{feature}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Dates */}
+                        <div className="mt-3 pt-3 border-t border-border/50 space-y-1">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Calendar className="w-3 h-3" />
+                            <span>
+                              Diaktifkan:{' '}
+                              {new Date(subscription.activatedAt).toLocaleDateString('id-ID', {
+                                day: 'numeric',
+                                month: 'long',
+                                year: 'numeric',
+                              })}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Calendar className="w-3 h-3" />
+                            <span>
+                              Berakhir:{' '}
+                              {new Date(subscription.expiresAt).toLocaleDateString('id-ID', {
+                                day: 'numeric',
+                                month: 'long',
+                                year: 'numeric',
+                              })}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 sm:flex-col sm:items-end">
                       <Link to={subscription.cmsLink}>
                         <Button variant="outline" size="sm" className="gap-1.5 text-xs">
                           <ArrowUpRight className="w-3.5 h-3.5" /> Buka CMS
                         </Button>
                       </Link>
-                      <Button variant="outline" size="sm" className="text-xs">
-                        Perpanjang
-                      </Button>
                     </div>
                   </div>
 
@@ -301,57 +388,16 @@ export function CmsLangganan() {
 
             {!isLoading && activeSubscriptions.length === 0 && (
               <div className="bg-card border border-border rounded-xl p-6 text-sm text-muted-foreground">
-                Belum ada paket aktif. Silakan pilih produk untuk mulai berlangganan.
+                Belum ada paket aktif. Silakan buat undangan baru untuk mulai berlangganan.
               </div>
             )}
-          </div>
-        </div>
-
-        <div>
-          <h3 className="text-base font-medium text-foreground mb-4">Produk Lain</h3>
-          <p className="text-sm text-muted-foreground mb-4">Tambahkan produk baru ke akunmu</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {availableProducts.map((product, index) => {
-              const Icon = iconMap[product.icon] || Heart
-
-              return (
-                <motion.div
-                  key={product.id}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: 0.3 + index * 0.1 }}
-                  className="bg-card border border-border rounded-xl p-5 hover:-translate-y-0.5 transition-all duration-300"
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div
-                      className="w-10 h-10 rounded-lg flex items-center justify-center"
-                      style={{ backgroundColor: `${product.color}12`, color: product.color }}
-                    >
-                      <Icon className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-medium text-foreground">{product.name}</h4>
-                      <p className="text-xs text-muted-foreground">{product.tagline}</p>
-                    </div>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Mulai dari <span className="font-medium text-foreground">{formatRupiah(product.startPrice)}/tahun</span>
-                  </p>
-                  <Link to={`/produk/${product.id}`}>
-                    <Button variant="outline" className="w-full text-xs gap-1.5" size="sm">
-                      <Check className="w-3.5 h-3.5" /> Lihat Detail
-                    </Button>
-                  </Link>
-                </motion.div>
-              )
-            })}
           </div>
         </div>
 
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.5 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
           className="bg-card border border-border rounded-xl p-6"
         >
           <div className="flex items-center gap-3 mb-4">
@@ -360,28 +406,54 @@ export function CmsLangganan() {
           </div>
           <div className="space-y-3">
             {paymentHistory.map((transaction) => (
-              <div key={transaction.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                <div>
-                  <p className="text-sm font-medium text-foreground">{transaction.product}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(transaction.date).toLocaleDateString('id-ID', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                    })}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium text-foreground">{formatRupiah(transaction.amount)}</p>
-                  <p className={`text-[10px] font-medium ${transaction.status === 'Berhasil' ? 'text-success' : transaction.status === 'Pending' ? 'text-warning' : 'text-destructive'}`}>
-                    {transaction.status}
-                  </p>
+              <div key={transaction.id} className="rounded-lg border border-border bg-muted/30 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-medium text-foreground">{transaction.product}</p>
+                      <Badge variant="outline" className="text-[10px]">
+                        {transaction.paymentMethod}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Invoice: {transaction.checkoutToken || transaction.orderId.slice(0, 8)}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {new Date(transaction.date).toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </p>
+                    
+                    {/* Items detail */}
+                    {transaction.items.length > 1 && (
+                      <div className="mt-2 pt-2 border-t border-border/50 space-y-1">
+                        {transaction.items.map((item, idx) => (
+                          <div key={idx} className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">{item.name}</span>
+                            <span className="text-foreground font-medium">{formatRupiah(item.price)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-foreground">{formatRupiah(transaction.amount)}</p>
+                    <p className={`text-[10px] font-medium mt-1 ${transaction.statusColor}`}>
+                      {transaction.status}
+                    </p>
+                  </div>
                 </div>
               </div>
             ))}
 
             {!isLoading && paymentHistory.length === 0 && (
-              <div className="p-3 rounded-lg bg-muted/30 text-sm text-muted-foreground">Belum ada riwayat pembayaran.</div>
+              <div className="p-4 rounded-lg bg-muted/30 text-sm text-muted-foreground">
+                Belum ada riwayat pembayaran.
+              </div>
             )}
           </div>
         </motion.div>

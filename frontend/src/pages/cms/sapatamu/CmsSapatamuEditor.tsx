@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { formatRupiah } from '@/lib/constants'
-import { resolveApiAssetUrl, resolveGoogleMapsShareUrl, sapatamuUpsertThemeAddonCart } from '@/lib/api'
+import { dataCreate, resolveApiAssetUrl, resolveGoogleMapsShareUrl, sapatamuUpsertThemeAddonCart } from '@/lib/api'
 import { getThemePreset, getThemeReleaseLabel, isThemeComingSoon, resolveThemeGroup } from '@/lib/sapatamu'
 import { PUBLIC_ADDITIONAL_SOURCE_THEME_IDS, PUBLIC_SOURCE_THEME_BACKDROPS } from '@/lib/sapatamu-source-themes'
 import { cn } from '@/lib/utils'
@@ -757,7 +757,6 @@ function EditorButtonPreview(props: {
     if (!rsvpForm.name.trim() || rsvpSaving) return
     setRsvpSaving(true)
     try {
-      const { dataCreate } = await import('@/lib/api')
       await dataCreate('invitation-rsvps', {
         invitation_id: invitationId,
         guest_name: rsvpForm.name.trim(),
@@ -2617,7 +2616,6 @@ function AishwaryaRsvp(props: AishwaryaProps) {
     if (!form.name.trim() || saving || props.isEditing) return
     setSaving(true)
     try {
-      const { dataCreate } = await import('@/lib/api')
       await dataCreate('invitation-rsvps', {
         invitation_id: props.invitationId,
         guest_name: form.name.trim(),
