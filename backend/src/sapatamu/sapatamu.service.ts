@@ -3432,18 +3432,21 @@ export class SapatamuService {
     }
 
     // ── Verifikasi amount ─────────────────────────────────────────────────────
-    const expectedAmount = Number(payment.amount);
-    if (webhookPayload.amount !== expectedAmount) {
+    const paymentMetadata = parseJsonObject(payment.metadata);
+    const expectedAmount = toNumber(paymentMetadata.originalAmount, Number(order.total_amount));
+    const expectedWithFee = Number(payment.amount);
+    const amountMatches = webhookPayload.amount === expectedAmount || webhookPayload.amount === expectedWithFee;
+
+    if (!amountMatches) {
       return {
         received: true,
         processed: false,
-        reason: `Amount tidak cocok: webhook=${webhookPayload.amount}, expected=${expectedAmount}`,
+        reason: `Amount tidak cocok: webhook=${webhookPayload.amount}, expected=${expectedAmount} (or ${expectedWithFee})`,
         orderId: order.id,
       };
     }
 
     // ── Jalankan fulfillment (sama dengan mockCompletePayment) ────────────────
-    const paymentMetadata = parseJsonObject(payment.metadata);
     const orderItems = sortThemeAddonOrderItemsForFulfillment(order.order_items);
     const item = orderItems[0];
 
