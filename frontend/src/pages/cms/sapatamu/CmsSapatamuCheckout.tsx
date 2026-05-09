@@ -16,7 +16,7 @@ type PaymentMethod = {
   logo?: string
 }
 
-const PAYMENT_METHODS = [
+const PAYMENT_METHODS: ReadonlyArray<PaymentMethod> = [
   { id: 'qris', label: 'QRIS', description: 'Scan QR dari aplikasi pembayaran pilihan Anda.', logo: '/payment-logos/QRIS LOGO.png' },
   { id: 'bni_va', label: 'BNI Virtual Account', description: 'Transfer ke nomor virtual account BNI.', logo: '/payment-logos/BNI LOGO.png' },
   { id: 'bri_va', label: 'BRI Virtual Account', description: 'Transfer ke nomor virtual account BRI.', logo: '/payment-logos/BRI LOGO.png' },
@@ -27,13 +27,13 @@ const PAYMENT_METHODS = [
   { id: 'permata_va', label: 'Permata Virtual Account', description: 'Transfer ke nomor virtual account Permata.' },
   { id: 'atm_bersama_va', label: 'ATM Bersama Virtual Account', description: 'Transfer via jaringan ATM Bersama.' },
   { id: 'artha_graha_va', label: 'Artha Graha Virtual Account', description: 'Transfer ke nomor virtual account Artha Graha.' },
-] as const satisfies ReadonlyArray<PaymentMethod>
+]
 
 export function CmsSapatamuCheckout() {
   const navigate = useNavigate()
   const { invitationId = '' } = useParams<{ invitationId: string }>()
   const [cart, setCart] = useState<SapatamuCartData | null>(null)
-  const [selectedMethod, setSelectedMethod] = useState<(typeof PAYMENT_METHODS)[number]['id']>('qris')
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod['id']>('qris')
   const [voucherCode, setVoucherCode] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
