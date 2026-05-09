@@ -14,9 +14,6 @@ export const PAKASIR_METHODS = [
   'permata_va',
   'atm_bersama_va',
   'artha_graha_va',
-  'mandiri_va',
-  'bca_va',
-  'bsi_va',
 ] as const;
 
 export type PakasirMethod = (typeof PAKASIR_METHODS)[number];
@@ -294,9 +291,13 @@ export class PakasirService {
     const vaPrefixes: Record<string, string> = {
       bni_va: '9888',
       bri_va: '7777',
-      mandiri_va: '8001',
-      bca_va: '8002',
-      bsi_va: '8003',
+      cimb_niaga_va: '8001',
+      sampoerna_va: '8002',
+      bnc_va: '8003',
+      maybank_va: '8004',
+      permata_va: '8005',
+      atm_bersama_va: '8006',
+      artha_graha_va: '8007',
     };
 
     return {
@@ -325,9 +326,13 @@ export class PakasirService {
     const bankNames: Record<string, string> = {
       bni_va: 'BNI',
       bri_va: 'BRI',
-      mandiri_va: 'Mandiri',
-      bca_va: 'BCA',
-      bsi_va: 'BSI',
+      cimb_niaga_va: 'CIMB Niaga',
+      sampoerna_va: 'Sampoerna',
+      bnc_va: 'BNC',
+      maybank_va: 'Maybank',
+      permata_va: 'Permata',
+      atm_bersama_va: 'ATM Bersama',
+      artha_graha_va: 'Artha Graha',
     };
 
     const bankName = bankNames[method] ?? 'Bank';

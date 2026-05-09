@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, CheckCircle2, Loader2, TicketPercent } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Landmark, Loader2, TicketPercent } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { CmsLayout } from '@/components/layout/CmsLayout'
 import { Button } from '@/components/ui/button'
@@ -13,9 +13,13 @@ const PAYMENT_METHODS = [
   { id: 'qris', label: 'QRIS', description: 'Scan QR dari aplikasi pembayaran pilihan Anda.', logo: '/payment-logos/QRIS LOGO.png' },
   { id: 'bni_va', label: 'BNI Virtual Account', description: 'Transfer ke nomor virtual account BNI.', logo: '/payment-logos/BNI LOGO.png' },
   { id: 'bri_va', label: 'BRI Virtual Account', description: 'Transfer ke nomor virtual account BRI.', logo: '/payment-logos/BRI LOGO.png' },
-  { id: 'mandiri_va', label: 'Mandiri Virtual Account', description: 'Transfer ke nomor virtual account Mandiri.', logo: '/payment-logos/MANDIRI LOGO.png' },
-  { id: 'bca_va', label: 'BCA Virtual Account', description: 'Transfer ke nomor virtual account BCA.', logo: '/payment-logos/BCA LOGO.png' },
-  { id: 'bsi_va', label: 'BSI Virtual Account', description: 'Transfer ke nomor virtual account BSI.', logo: '/payment-logos/BSI Logo.png' },
+  { id: 'cimb_niaga_va', label: 'CIMB Niaga Virtual Account', description: 'Transfer ke nomor virtual account CIMB Niaga.' },
+  { id: 'sampoerna_va', label: 'Bank Sampoerna Virtual Account', description: 'Transfer ke nomor virtual account Bank Sampoerna.' },
+  { id: 'bnc_va', label: 'BNC Virtual Account', description: 'Transfer ke nomor virtual account BNC.' },
+  { id: 'maybank_va', label: 'Maybank Virtual Account', description: 'Transfer ke nomor virtual account Maybank.' },
+  { id: 'permata_va', label: 'Permata Virtual Account', description: 'Transfer ke nomor virtual account Permata.' },
+  { id: 'atm_bersama_va', label: 'ATM Bersama Virtual Account', description: 'Transfer via jaringan ATM Bersama.' },
+  { id: 'artha_graha_va', label: 'Artha Graha Virtual Account', description: 'Transfer ke nomor virtual account Artha Graha.' },
 ] as const
 
 export function CmsSapatamuCheckout() {
@@ -89,7 +93,13 @@ export function CmsSapatamuCheckout() {
                   >
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex min-w-0 items-center gap-3">
-                        <img src={method.logo} alt={method.label} className="h-10 w-20 shrink-0 rounded-xl border border-border bg-white object-contain p-1.5" />
+                        {method.logo ? (
+                          <img src={method.logo} alt={method.label} className="h-10 w-20 shrink-0 rounded-xl border border-border bg-white object-contain p-1.5" />
+                        ) : (
+                          <div className="flex h-10 w-20 shrink-0 items-center justify-center rounded-xl border border-border bg-white">
+                            <Landmark className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                        )}
                         <div>
                           <p className="font-semibold text-foreground">{method.label}</p>
                           <p className="text-sm text-muted-foreground mt-1">{method.description}</p>
