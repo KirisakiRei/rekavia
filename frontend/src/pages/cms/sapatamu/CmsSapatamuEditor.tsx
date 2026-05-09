@@ -58,7 +58,6 @@ import {
   getElementTypeFromKey,
   isGoogleMapsShortUrl,
   listPageEditableKeys,
-  mergePageDataWithDesignDefaults,
   resetPageDataToDefault,
   resolveEditorTokens,
   splitEditorParagraphs,
