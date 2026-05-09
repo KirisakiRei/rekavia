@@ -96,44 +96,85 @@ export class PakasirService {
     }
 
     try {
-      // Endpoint yang benar sesuai dokumentasi Pakasir
-      const response = await fetch(
-        `${this.baseUrl}/transaction/create`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            api_key: this.apiKey,
-            project: this.project,
-            order_id: orderId,
-            amount,
-            payment_method: method,
-          }),
-        },
-      );
+      // Try multiple endpoint variations based on common payment gateway patterns
+      const endpoints = [
+        '/transaction/create',
+        '/transactioncreate',
+        '/api/transaction/create',
+        '/v1/transaction/create',
+      ];
 
-      if (!response.ok) {
-        const text = await response.text().catch(() => '');
-        this.logger.error(
-          `Pakasir API error ${response.status}: ${text}`,
-          undefined,
-          'PakasirService.createTransaction',
-        );
-        throw new Error(`Pakasir API error: ${response.status}`);
+      let lastError: { status: number; text: string } | null = null;
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await fetch(
+            `${this.baseUrl}${endpoint}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                api_key: this.apiKey,
+                project: this.project,
+                order_id: orderId,
+                amount,
+                payment_method: method,
+              }),
+            },
+          );
+
+          if (response.ok) {
+            const data = (await response.json()) as PakasirCreateResponse;
+            const p = data.payment;
+
+            this.logger.log(
+              `Pakasir transaction created successfully using endpoint: ${endpoint}`,
+              'PakasirService.createTransaction',
+            );
+
+            return {
+              paymentNumber: p.payment_number,
+              paymentMethod: p.payment_method,
+              amount: p.amount,
+              fee: p.fee,
+              totalPayment: p.total_payment,
+              expiredAt: p.expired_at,
+              isMock: false,
+            };
+          }
+
+          // Store error for logging
+          const text = await response.text().catch(() => '');
+          lastError = { status: response.status, text };
+
+          // If not 404, break and throw error (other errors are not endpoint issues)
+          if (response.status !== 404) {
+            break;
+          }
+        } catch (err) {
+          // Network error, try next endpoint
+          continue;
+        }
       }
 
-      const data = (await response.json()) as PakasirCreateResponse;
-      const p = data.payment;
-
-      return {
-        paymentNumber: p.payment_number,
-        paymentMethod: p.payment_method,
-        amount: p.amount,
-        fee: p.fee,
-        totalPayment: p.total_payment,
-        expiredAt: p.expired_at,
-        isMock: false,
-      };
+      // All endpoints failed
+      this.logger.error(
+        `Pakasir API error ${lastError?.status ?? 'unknown'}: ${lastError?.text ?? 'No response'}`,
+        undefined,
+        'PakasirService.createTransaction',
+      );
+      this.logger.error(
+        `Request details - Method: ${method}, Project: ${this.project}, OrderId: ${orderId}, Amount: ${amount}`,
+        undefined,
+        'PakasirService.createTransaction',
+      );
+      this.logger.error(
+        `All endpoints tried: ${endpoints.join(', ')}`,
+        undefined,
+        'PakasirService.createTransaction',
+      );
+      
+      throw new Error(`Pakasir API error: ${lastError?.status ?? 'unknown'}`);
     } catch (error) {
       this.logger.error(
         `Gagal menghubungi Pakasir: ${error instanceof Error ? error.message : String(error)}`,
