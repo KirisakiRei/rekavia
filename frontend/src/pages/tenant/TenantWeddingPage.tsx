@@ -295,6 +295,7 @@ function reconcilePublicDocument(
 ) {
   if (!document || rows.length === 0) return document
 
+  // Bangun map layout dari snapshot dokumen (data yang sudah disimpan user)
   const snapshotDefaults = new Map(
     (document.editor.layoutCatalogSnapshot ?? []).map((layout) => [
       layout.layoutCode,
@@ -302,12 +303,18 @@ function reconcilePublicDocument(
         layoutCode: layout.layoutCode,
         family: layout.family,
         title: layout.title,
+        // Gunakan defaultPageData dari snapshot dokumen (bukan dari DB)
+        // agar live view = canvas user, bukan default admin terbaru
         defaultPageData: layout.defaultPageData,
         sortOrder: layout.sortOrder,
         isActive: layout.defaultVisible !== false,
       },
     ]),
   )
+
+  // Dari DB rows, hanya ambil metadata (family, title, sortOrder, isActive)
+  // tapi JANGAN override defaultPageData dengan data fresh dari DB
+  // karena itu akan membuat live view berbeda dari canvas user
   const rowsByCode = new Map<string, EditorLayoutTemplateRow>()
   rows.forEach((row) => {
     const existing = rowsByCode.get(row.layout_code)
@@ -326,7 +333,9 @@ function reconcilePublicDocument(
       layoutCode: row.layout_code,
       family: existingDefault?.family ?? row.family,
       title: existingDefault?.title ?? row.title,
-      defaultPageData: row.default_data_json ?? existingDefault?.defaultPageData ?? {},
+      // Prioritaskan defaultPageData dari snapshot dokumen (canvas user)
+      // Hanya gunakan data DB jika layout ini belum ada di snapshot (halaman baru)
+      defaultPageData: existingDefault?.defaultPageData ?? row.default_data_json ?? {},
       sortOrder: row.sort_order,
       isActive: true,
     })
@@ -645,6 +654,21 @@ export function TenantWeddingPage() {
         }
         const content = contentResponse.data?.items?.[0]?.content_json
         const contentWeddingData = content?.weddingData ?? {}
+
+        // ── Update nama mempelai lebih awal agar loading screen menampilkan nama terbaru
+        const earlyBrideName = (contentWeddingData as Record<string, unknown>).brideName as string | undefined
+          ?? invitation?.bride_name
+          ?? ''
+        const earlyGroomName = (contentWeddingData as Record<string, unknown>).groomName as string | undefined
+          ?? invitation?.groom_name
+          ?? ''
+        if (earlyBrideName || earlyGroomName) {
+          setWeddingData((prev) => ({
+            ...prev,
+            brideName: earlyBrideName || prev.brideName,
+            groomName: earlyGroomName || prev.groomName,
+          }))
+        }
         const nextIsDemoPreview = contentWeddingData && typeof contentWeddingData === 'object' && contentWeddingData.isDemoPreview === true
         const nextEditorDocument =
           content?.schemaVersion === 3 && content.editor?.pages?.length

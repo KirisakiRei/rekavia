@@ -314,6 +314,112 @@ export function mergePageDataWithDesignDefaults(
   return next
 }
 
+// ─── Keys yang dianggap "konten user" — dipertahankan saat Set to Default ────
+// Design keys (posisi, ukuran, font, animasi, style) akan di-reset ke default admin.
+// Content keys (teks, url, link, items, foto) dipertahankan dari user.
+const CONTENT_KEYS = new Set([
+  'content',   // teks
+  'url',       // video/maps URL
+  'link',      // button link
+  'items',     // story/sponsor/credit items
+  'photoUrl',  // foto profil
+  'src',       // gambar
+  'value',     // nilai generik konten
+  'accounts',  // rekening gift
+  'address',   // alamat gift
+])
+
+/**
+ * Reset page data ke default admin, tapi pertahankan konten yang sudah diisi user.
+ * Digunakan oleh tombol "Set to Default" di editor user.
+ *
+ * Yang di-reset: posisi, ukuran, font, animasi, warna, style visual
+ * Yang dipertahankan: teks, URL, link, items, foto
+ */
+export function resetPageDataToDefault(
+  currentData: SapatamuEditorPage['data'],
+  defaultData?: Record<string, unknown>,
+): SapatamuEditorPage['data'] {
+  const normalizedDefaults = defaultData ?? {}
+
+  // Mulai dari full clone default (semua design keys ikut default)
+  const next = cloneJson(normalizedDefaults) as SapatamuEditorPage['data']
+
+  // Untuk setiap elemen di current data, pertahankan content keys
+  Object.entries(currentData).forEach(([elementKey, currentElement]) => {
+    if (!isRecord(currentElement)) return
+
+    const defaultElement = normalizedDefaults[elementKey]
+
+    // Jika elemen tidak ada di default, pertahankan seluruhnya (user-added)
+    if (defaultElement === undefined) {
+      next[elementKey] = cloneJson(currentElement)
+      return
+    }
+
+    if (!isRecord(defaultElement)) return
+
+    // Elemen ada di default — mulai dari default, lalu copy content keys dari user
+    const nextElement = cloneJson(defaultElement) as Record<string, unknown>
+
+    CONTENT_KEYS.forEach((contentKey) => {
+      if (contentKey in currentElement) {
+        const userValue = currentElement[contentKey]
+        // Hanya pertahankan jika user sudah mengisi (bukan string kosong / null / undefined)
+        const hasUserContent =
+          userValue !== null &&
+          userValue !== undefined &&
+          userValue !== '' &&
+          !(Array.isArray(userValue) && userValue.length === 0)
+
+        if (hasUserContent) {
+          nextElement[contentKey] = cloneJson(userValue)
+        }
+      }
+    })
+
+    // Untuk elemen dengan sub-items (story, sponsor), pertahankan items dari user
+    if ('items' in currentElement && Array.isArray(currentElement.items)) {
+      const userItems = currentElement.items as unknown[]
+      const defaultItems = Array.isArray(defaultElement.items) ? defaultElement.items as unknown[] : []
+
+      if (userItems.length > 0) {
+        // Merge: pertahankan jumlah items dari default, tapi isi konten dari user
+        nextElement.items = defaultItems.map((defaultItem, index) => {
+          const userItem = userItems[index]
+          if (!isRecord(defaultItem) || !isRecord(userItem)) return cloneJson(defaultItem)
+
+          const nextItem = cloneJson(defaultItem) as Record<string, unknown>
+          CONTENT_KEYS.forEach((contentKey) => {
+            if (contentKey in userItem) {
+              const userValue = userItem[contentKey]
+              const hasContent =
+                userValue !== null &&
+                userValue !== undefined &&
+                userValue !== '' &&
+                !(Array.isArray(userValue) && userValue.length === 0)
+              if (hasContent) {
+                nextItem[contentKey] = cloneJson(userValue)
+              }
+            }
+          })
+          return nextItem
+        })
+
+        // Jika user punya lebih banyak items dari default, tambahkan sisanya
+        if (userItems.length > defaultItems.length) {
+          const extraItems = userItems.slice(defaultItems.length)
+          ;(nextElement.items as unknown[]).push(...extraItems.map((item) => cloneJson(item)))
+        }
+      }
+    }
+
+    next[elementKey] = nextElement
+  })
+
+  return next
+}
+
 type LayoutDefaultLike = {
   layoutCode: string
   family: string

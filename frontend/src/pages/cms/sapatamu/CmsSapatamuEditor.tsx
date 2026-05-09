@@ -59,6 +59,7 @@ import {
   isGoogleMapsShortUrl,
   listPageEditableKeys,
   mergePageDataWithDesignDefaults,
+  resetPageDataToDefault,
   resolveEditorTokens,
   splitEditorParagraphs,
   stripEditorHtml,
@@ -5285,7 +5286,8 @@ export function CmsSapatamuEditor() {
     if (!layout) return
     replacePage(page.uniqueId, {
       ...page,
-      data: mergePageDataWithDesignDefaults(page.data, layout.defaultPageData),
+      // Reset design keys ke default admin, pertahankan konten user (teks, url, link, items, foto)
+      data: resetPageDataToDefault(page.data, layout.defaultPageData),
     })
   }
   const selectedEditorElement = getEditableElement(page, selectedElement)
