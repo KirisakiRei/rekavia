@@ -440,11 +440,20 @@ export function CmsLangganan() {
                       </div>
                     )}
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-foreground">{formatRupiah(transaction.amount)}</p>
-                    <p className={`text-[10px] font-medium mt-1 ${transaction.statusColor}`}>
-                      {transaction.status}
-                    </p>
+                  <div className="text-right flex flex-col items-end gap-2">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{formatRupiah(transaction.amount)}</p>
+                      <p className={`text-[10px] font-medium mt-1 ${transaction.statusColor}`}>
+                        {transaction.status}
+                      </p>
+                    </div>
+                    {transaction.orderId && (
+                      <Link to={`/cms/payments/${transaction.orderId}`}>
+                        <Button variant="outline" size="sm" className="text-xs h-7">
+                          Lihat Detail
+                        </Button>
+                      </Link>
+                    )}
                   </div>
                 </div>
               </div>
