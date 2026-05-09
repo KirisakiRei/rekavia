@@ -9,6 +9,13 @@ import { CMS_SIDEBAR_LINKS, formatRupiah } from '@/lib/constants'
 import { sapatamuApplyVoucher, sapatamuCreatePayment, sapatamuGetCart } from '@/lib/api'
 import type { SapatamuCartData } from '@/types/sapatamu'
 
+type PaymentMethod = {
+  id: string
+  label: string
+  description: string
+  logo?: string
+}
+
 const PAYMENT_METHODS = [
   { id: 'qris', label: 'QRIS', description: 'Scan QR dari aplikasi pembayaran pilihan Anda.', logo: '/payment-logos/QRIS LOGO.png' },
   { id: 'bni_va', label: 'BNI Virtual Account', description: 'Transfer ke nomor virtual account BNI.', logo: '/payment-logos/BNI LOGO.png' },
@@ -20,7 +27,7 @@ const PAYMENT_METHODS = [
   { id: 'permata_va', label: 'Permata Virtual Account', description: 'Transfer ke nomor virtual account Permata.' },
   { id: 'atm_bersama_va', label: 'ATM Bersama Virtual Account', description: 'Transfer via jaringan ATM Bersama.' },
   { id: 'artha_graha_va', label: 'Artha Graha Virtual Account', description: 'Transfer ke nomor virtual account Artha Graha.' },
-] as const
+] as const satisfies ReadonlyArray<PaymentMethod>
 
 export function CmsSapatamuCheckout() {
   const navigate = useNavigate()
