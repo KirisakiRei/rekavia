@@ -576,7 +576,7 @@ export class SapatamuService {
 
   private async assertSlugAvailability(
     slug: string,
-    options?: { excludeDraftId?: string; excludeInvitationId?: string },
+    options?: { excludeDraftId?: string; excludeInvitationId?: string; excludeUserId?: string },
   ): Promise<void> {
     const normalized = slugify(slug);
 
@@ -598,6 +598,8 @@ export class SapatamuService {
             in: [InvitationDraftStatus.in_progress, InvitationDraftStatus.pending_payment],
           },
           id: options?.excludeDraftId ? { not: options.excludeDraftId } : undefined,
+          // Exclude drafts milik user yang sama (user boleh reuse slug dari draft lamanya)
+          user_id: options?.excludeUserId ? { not: options.excludeUserId } : undefined,
         },
       }),
     ]);
@@ -2308,7 +2310,18 @@ export class SapatamuService {
     }
     this.assertThemeAvailableForSelection(selectedTheme);
     const selectedThemeId = selectedTheme.id;
-    await this.assertSlugAvailability(suggestedSlug);
+    await this.assertSlugAvailability(suggestedSlug, { excludeUserId: user.id });
+
+    // Cleanup: soft-delete draft lama milik user yang masih in_progress dengan slug yang sama
+    await this.db.invitationDraft.updateMany({
+      where: {
+        user_id: user.id,
+        slug_candidate: suggestedSlug,
+        status: InvitationDraftStatus.in_progress,
+        deleted_at: null,
+      },
+      data: { deleted_at: new Date() },
+    });
 
     const draft = await this.db.invitationDraft.create({
       data: {

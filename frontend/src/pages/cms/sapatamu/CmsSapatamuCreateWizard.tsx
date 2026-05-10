@@ -305,7 +305,7 @@ export function CmsSapatamuCreateWizard({ onClose }: WizardProps) {
                 onChange={(event) =>
                   updateDraftField('slugCandidate', event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))
                 }
-                placeholder="contoh: ryan-laras"
+                placeholder="contoh: putra-putri"
                 className="h-12 rounded-xl"
               />
               <p className="text-sm text-muted-foreground">Preview: <span className="text-foreground">{buildSlugPreview(draft.slugCandidate)}</span></p>
