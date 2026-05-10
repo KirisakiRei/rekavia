@@ -107,7 +107,7 @@ describe('SapatamuService theme commerce helpers', () => {
     });
   });
 
-  it('overrides special Luxury pricing when a voucher is applied', () => {
+  it('applies voucher on special Luxury pricing', () => {
     const pricing = calculateThemeActivationCheckout({
       basePrice: 349000,
       specialPrice: 279000,
@@ -117,7 +117,7 @@ describe('SapatamuService theme commerce helpers', () => {
     expect(pricing).toEqual({
       originalAmount: 349000,
       discountAmount: 50000,
-      totalAmount: 299000,
+      totalAmount: 229000,
       priceMode: 'voucher',
       specialDiscountPercent: 20,
     });

@@ -245,11 +245,11 @@ export function calculateThemeActivationCheckout(params: {
   const specialDiscountPercent = originalAmount > 0 ? Math.round((specialDiscountAmount / originalAmount) * 100) : 0;
 
   if (voucherDiscountAmount > 0) {
-    const discountAmount = Math.min(originalAmount, voucherDiscountAmount);
+    const discountAmount = Math.min(specialPrice, voucherDiscountAmount);
     return {
       originalAmount,
       discountAmount,
-      totalAmount: Math.max(0, originalAmount - discountAmount),
+      totalAmount: Math.max(0, specialPrice - discountAmount),
       priceMode: 'voucher' as const,
       specialDiscountPercent,
     };
@@ -2903,15 +2903,16 @@ export class SapatamuService {
       throw new BadRequestException('Voucher hanya berlaku untuk aktivasi tema utama.');
     }
     const originalAmount = Number(item.subtotal);
-    const voucher = await this.getVoucher(code, user.id, item.package_id, originalAmount);
+    const specialPrice = toNumber(itemMetadata.specialPrice, THEME_ACTIVATION_SPECIAL_PRICE);
+    const voucher = await this.getVoucher(code, user.id, item.package_id, specialPrice);
     if (!voucher) {
       throw new BadRequestException('Kode voucher tidak valid.');
     }
 
-    const discountAmount = this.calculateVoucherDiscount(originalAmount, voucher);
+    const discountAmount = this.calculateVoucherDiscount(specialPrice, voucher);
     const nextPricing = calculateThemeActivationCheckout({
       basePrice: originalAmount,
-      specialPrice: toNumber(itemMetadata.specialPrice, THEME_ACTIVATION_SPECIAL_PRICE),
+      specialPrice,
       voucherDiscountAmount: discountAmount,
     });
 

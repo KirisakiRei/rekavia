@@ -182,13 +182,13 @@ export function CmsSapatamuCheckout() {
                       Apply
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground">Masukkan kode voucher jika Anda memilikinya.</p>
+                  <p className="text-xs text-muted-foreground">Masukkan kode voucher.</p>
                 </div>
               ) : null}
 
               {/* Voucher applied */}
               {cart.voucher ? (
-                <SummaryRow label={`Voucher (${cart.voucher.code}) ${cart.voucher.label ?? ''}`} value={`- ${formatRupiah(cart.discountAmount)}`} accent />
+                <SummaryRow label={`Voucher (${cart.voucher.code})`} value={`- ${formatRupiah(cart.discountAmount)}`} accent />
               ) : null}
 
               {/* Biaya layanan */}

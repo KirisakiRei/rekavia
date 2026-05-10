@@ -6,7 +6,7 @@ import { CmsLayout } from '@/components/layout/CmsLayout'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { CMS_SIDEBAR_LINKS, PRODUCTS, formatRupiah } from '@/lib/constants'
-import { dataList } from '@/lib/api'
+import { cmsLangganan } from '@/lib/api'
 import { useAuthStore } from '@/stores/authStore'
 
 type LicenseRow = {
@@ -125,73 +125,24 @@ export function CmsLangganan() {
       setIsLoading(true)
 
       try {
-        // Step 1: Fetch orders milik user ini dan licenses
-        const [orderRes, licenseRes, templateRes, packageRes] = await Promise.all([
-          dataList<OrderRow>('orders', {
-            where: { user_id: user.id },
-            orderBy: { created_at: 'desc' },
-            limit: 50,
-          }),
-          dataList<LicenseRow>('user-template-licenses', {
-            where: { user_id: user.id },
-            orderBy: { created_at: 'desc' },
-            limit: 50,
-          }),
-          dataList<TemplateRow>('invitation-templates', {
-            limit: 100,
-          }),
-          dataList<PackageRow>('packages', {
-            limit: 100,
-          }),
-        ])
+        const response = await cmsLangganan<{
+          orders: OrderRow[]
+          licenses: LicenseRow[]
+          templates: TemplateRow[]
+          packages: PackageRow[]
+          payments: PaymentRow[]
+          orderItems: OrderItemRow[]
+          invitations: InvitationRow[]
+        }>()
 
-        const fetchedOrders = orderRes.data?.items ?? []
-        const fetchedLicenses = licenseRes.data?.items ?? []
-        const fetchedTemplates = templateRes.data?.items ?? []
-        const fetchedPackages = packageRes.data?.items ?? []
-
-        setOrders(fetchedOrders)
-        setLicenses(fetchedLicenses)
-        setTemplates(fetchedTemplates)
-        setPackages(fetchedPackages)
-
-        // Step 2: Fetch payments dan order-items untuk orders milik user
-        const orderIds = fetchedOrders.map((o) => o.id)
-        
-        if (orderIds.length > 0) {
-          // Fetch all payments dan order-items, filter di frontend
-          // Karena orders sudah difilter by user_id, kita bisa fetch payments by order_id
-          const paymentPromises = orderIds.map((orderId) =>
-            dataList<PaymentRow>('payments', {
-              where: { order_id: orderId },
-              limit: 10,
-            }).catch(() => ({ data: { items: [] as PaymentRow[] } }))
-          )
-          const orderItemPromises = orderIds.map((orderId) =>
-            dataList<OrderItemRow>('order-items', {
-              where: { order_id: orderId },
-              limit: 10,
-            }).catch(() => ({ data: { items: [] as OrderItemRow[] } }))
-          )
-
-          const [paymentResults, orderItemResults] = await Promise.all([
-            Promise.all(paymentPromises),
-            Promise.all(orderItemPromises),
-          ])
-
-          const allPayments = paymentResults.flatMap((r) => r.data?.items ?? [])
-          const allOrderItems = orderItemResults.flatMap((r) => r.data?.items ?? [])
-
-          setPayments(allPayments)
-          setOrderItems(allOrderItems)
-        }
-
-        // Step 3: Fetch invitations milik user untuk menampilkan nama undangan
-        const invitationRes = await dataList<InvitationRow>('invitations', {
-          where: { user_id: user.id },
-          limit: 50,
-        })
-        setInvitations(invitationRes.data?.items ?? [])
+        const payload = response.data
+        setOrders(payload?.orders ?? [])
+        setLicenses(payload?.licenses ?? [])
+        setTemplates(payload?.templates ?? [])
+        setPackages(payload?.packages ?? [])
+        setPayments(payload?.payments ?? [])
+        setOrderItems(payload?.orderItems ?? [])
+        setInvitations(payload?.invitations ?? [])
       } catch {
         // Silent fail
       } finally {

@@ -240,6 +240,11 @@ export async function cmsHome<T>(): Promise<ApiResponse<T>> {
   return data
 }
 
+export async function cmsLangganan<T>(): Promise<ApiResponse<T>> {
+  const { data } = await api.get<ApiResponse<T>>('/cms/langganan')
+  return data
+}
+
 type AdminQuery = {
   page?: number
   limit?: number

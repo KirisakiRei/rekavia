@@ -24,4 +24,18 @@ export class CmsController {
       data,
     });
   }
+
+  @Get('langganan')
+  async langganan(
+    @Request() req: { user: any },
+    @Res() res: Response,
+  ): Promise<Response> {
+    const data = await this.service.langganan(req.user);
+    return res.status(200).send({
+      status: 'success',
+      code: 200,
+      message: 'Data langganan ditemukan',
+      data,
+    });
+  }
 }
