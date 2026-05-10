@@ -25,10 +25,9 @@ export function CmsSapatamuBroadcast() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
   const generateLink = useCallback((name: string): GeneratedLink => {
-    const encoded = encodeURIComponent(name.trim())
-    const url = `${baseUrl}?to=${encoded}`
+    const url = baseUrl
     const message = `Assalamu'alaikum ${name.trim()},\n\nDengan penuh kebahagiaan, kami mengundang Anda untuk hadir di acara pernikahan kami.\n\nBuka undangan di:\nhttps://${url}\n\nTerima kasih.`
-    const waUrl = `https://wa.me/?text=${encodeURIComponent(message)}`
+    const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`
     return { name: name.trim(), url: `https://${url}`, waUrl }
   }, [baseUrl])
 

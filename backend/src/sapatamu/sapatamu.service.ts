@@ -1441,8 +1441,8 @@ export class SapatamuService {
     } as Prisma.InputJsonValue;
   }
 
-  private buildPersonalizedUrl(slug: string, guestName: string): string {
-    return `https://${BRAND.domain}/${slug}?to=${encodeURIComponent(guestName)}`;
+  private buildPersonalizedUrl(slug: string, _guestName: string): string {
+    return `https://${BRAND.domain}/${slug}`;
   }
 
   private buildEditorVariableCatalog(

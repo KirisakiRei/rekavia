@@ -84,28 +84,28 @@ export type DraftWizardState = {
 
 export const DEFAULT_PREFACE_TEMPLATE = `Assalamu'alaikum Warahmatullahi Wabarakaatuh
 
-Kepada Yth. Bapak/Ibu {{guest-name}}
+Kepada Yth.
+Bapak/Ibu/Saudara/i *{{guest-name}}*
 
-Dengan penuh rasa syukur, kami ingin menyampaikan kabar bahagia atas pernikahan kami:
+Tanpa mengurangi rasa hormat, perkenankan kami mengundang Bapak/Ibu/Saudara/i untuk menghadiri acara pernikahan kami:
 
-{{full-name-1}} & {{full-name-2}}
+*{{full-name-1}} & {{full-name-2}}*
 
-InsyaAllah akan dilaksanakan pada:
+📅 *{{event-name-1}}*
+{{event-date-1}} • {{time-start-1}} {{event-timezone-1}}
+📍 {{event-location-1}}
 
-{{event-name-1}}: {{event-date-1}}
-Pukul {{time-start-1}} {{event-timezone-1}}
-{{event-location-1}}
+📅 *{{event-name-2}}*
+{{event-date-2}} • {{time-start-2}} - {{time-end-2}} {{event-timezone-2}}
+📍 {{event-location-2}}
 
-{{event-name-2}}: {{event-date-2}}
-Pukul {{time-start-2}} - {{time-end-2}} {{event-timezone-2}}
-{{event-location-2}}
+Buka undangan di:
+{{link}}
 
-Link Undangan: {{link}}
-
-Doa restu Bapak/Ibu menjadi kebahagiaan besar bagi kami.
+Merupakan suatu kehormatan dan kebahagiaan bagi kami apabila Bapak/Ibu/Saudara/i berkenan hadir.
 
 Wassalamu'alaikum Warahmatullahi Wabarakaatuh
-{{nick-name-1}} & {{nick-name-2}}`;
+*{{nick-name-1}} & {{nick-name-2}}*`;
 
 function cleanString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
