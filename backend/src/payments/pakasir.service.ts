@@ -2,18 +2,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 // ─── Pakasir method yang didukung ────────────────────────────────────────────
-// Sesuai dokumentasi: https://pakasir.com/p/docs
+// Sesuai integrasi Pakasir yang aktif
 export const PAKASIR_METHODS = [
   'qris',
+  'cimb_niaga_va',
   'bni_va',
   'bri_va',
-  'cimb_niaga_va',
-  'sampoerna_va',
-  'bnc_va',
-  'maybank_va',
-  'permata_va',
-  'atm_bersama_va',
-  'artha_graha_va',
 ] as const;
 
 export type PakasirMethod = (typeof PAKASIR_METHODS)[number];
@@ -289,15 +283,9 @@ export class PakasirService {
     }
 
     const vaPrefixes: Record<string, string> = {
+      cimb_niaga_va: '8001',
       bni_va: '9888',
       bri_va: '7777',
-      cimb_niaga_va: '8001',
-      sampoerna_va: '8002',
-      bnc_va: '8003',
-      maybank_va: '8004',
-      permata_va: '8005',
-      atm_bersama_va: '8006',
-      artha_graha_va: '8007',
     };
 
     return {
@@ -324,15 +312,9 @@ export class PakasirService {
     }
 
     const bankNames: Record<string, string> = {
+      cimb_niaga_va: 'CIMB Niaga',
       bni_va: 'BNI',
       bri_va: 'BRI',
-      cimb_niaga_va: 'CIMB Niaga',
-      sampoerna_va: 'Sampoerna',
-      bnc_va: 'BNC',
-      maybank_va: 'Maybank',
-      permata_va: 'Permata',
-      atm_bersama_va: 'ATM Bersama',
-      artha_graha_va: 'Artha Graha',
     };
 
     const bankName = bankNames[method] ?? 'Bank';

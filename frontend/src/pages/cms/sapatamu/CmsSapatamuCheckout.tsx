@@ -18,15 +18,9 @@ type PaymentMethod = {
 
 const PAYMENT_METHODS: ReadonlyArray<PaymentMethod> = [
   { id: 'qris', label: 'QRIS', description: 'Scan QR dari aplikasi pembayaran pilihan Anda.', logo: '/payment-logos/QRIS LOGO.png' },
+  { id: 'cimb_niaga_va', label: 'CIMB Niaga Virtual Account', description: 'Transfer ke nomor virtual account CIMB Niaga.', logo:'/payment-logos/CIMB LOGO.webp' },
   { id: 'bni_va', label: 'BNI Virtual Account', description: 'Transfer ke nomor virtual account BNI.', logo: '/payment-logos/BNI LOGO.png' },
   { id: 'bri_va', label: 'BRI Virtual Account', description: 'Transfer ke nomor virtual account BRI.', logo: '/payment-logos/BRI LOGO.png' },
-  { id: 'cimb_niaga_va', label: 'CIMB Niaga Virtual Account', description: 'Transfer ke nomor virtual account CIMB Niaga.' },
-  { id: 'sampoerna_va', label: 'Bank Sampoerna Virtual Account', description: 'Transfer ke nomor virtual account Bank Sampoerna.' },
-  { id: 'bnc_va', label: 'BNC Virtual Account', description: 'Transfer ke nomor virtual account BNC.' },
-  { id: 'maybank_va', label: 'Maybank Virtual Account', description: 'Transfer ke nomor virtual account Maybank.' },
-  { id: 'permata_va', label: 'Permata Virtual Account', description: 'Transfer ke nomor virtual account Permata.' },
-  { id: 'atm_bersama_va', label: 'ATM Bersama Virtual Account', description: 'Transfer via jaringan ATM Bersama.' },
-  { id: 'artha_graha_va', label: 'Artha Graha Virtual Account', description: 'Transfer ke nomor virtual account Artha Graha.' },
 ]
 
 export function CmsSapatamuCheckout() {
