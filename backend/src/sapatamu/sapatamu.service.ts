@@ -98,6 +98,7 @@ const CART_KIND_THEME_ADDON = 'theme_add_on';
 const THEME_ACTIVATION_BASE_PRICE = 349000;
 const THEME_ACTIVATION_SPECIAL_PRICE = 279000;
 const THEME_ADDON_FIRST_PRICE = 150000;
+const PAYMENT_SERVICE_FEE = 5000;
 const THEME_ADDON_SECOND_PRICE = 75000;
 const SAPATAMU_MAX_ALBUM_PHOTOS = 50;
 const SHARED_THEME_ACCESS_DAYS = 30;
@@ -2959,6 +2960,7 @@ export class SapatamuService {
     }
 
     const totalAmount = Number(order.total_amount);
+    const amountToPay = totalAmount + PAYMENT_SERVICE_FEE;
     const orderItems = sortThemeAddonOrderItemsForFulfillment(order.order_items);
     const item = orderItems[0];
     const itemMetadata = parseJsonObject(item.metadata);
@@ -2967,7 +2969,7 @@ export class SapatamuService {
     const pakasirResult = await this.pakasir.createTransaction(
       method,
       order.checkout_token, // pakai checkout_token sebagai order_id di Pakasir (unik & readable)
-      totalAmount,
+      amountToPay, // totalAmount + biaya layanan
     );
 
     await this.db.$transaction(async (tx) => {
@@ -2989,15 +2991,17 @@ export class SapatamuService {
           status: PaymentStatus.pending,
           // provider_ref = checkout_token agar bisa di-lookup saat webhook masuk
           provider_ref: order.checkout_token,
-          amount: pakasirResult.totalPayment, // amount yang harus dibayar (termasuk fee)
+          amount: pakasirResult.totalPayment, // amount yang harus dibayar (termasuk fee dari Pakasir)
           metadata: {
             paymentMethod: pakasirResult.paymentMethod,
             paymentNumber: pakasirResult.paymentNumber,
             instructions: PakasirService.buildInstructions(method),
             expiredAt: pakasirResult.expiredAt,
             fee: pakasirResult.fee,
+            serviceFee: PAYMENT_SERVICE_FEE,
             totalPayment: pakasirResult.totalPayment,
             originalAmount: totalAmount,
+            amountToPay,
             isMock: pakasirResult.isMock,
             invitationId,
             kind:
@@ -3465,9 +3469,9 @@ export class SapatamuService {
 
     // ── Verifikasi amount ─────────────────────────────────────────────────────
     const paymentMetadata = parseJsonObject(payment.metadata);
-    const expectedAmount = toNumber(paymentMetadata.originalAmount, Number(order.total_amount));
+    const expectedAmount = toNumber(paymentMetadata.amountToPay, toNumber(paymentMetadata.originalAmount, Number(order.total_amount)));
     const expectedWithFee = Number(payment.amount);
-    const amountMatches = webhookPayload.amount === expectedAmount || webhookPayload.amount === expectedWithFee;
+    const amountMatches = webhookPayload.amount === expectedAmount || webhookPayload.amount === expectedWithFee || webhookPayload.amount === Number(order.total_amount);
 
     if (!amountMatches) {
       return {
