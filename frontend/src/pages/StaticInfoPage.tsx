@@ -195,7 +195,7 @@ const PAGES: Record<string, PageConfig> = {
       title: 'Siap membuat undangan digital yang rapi?',
       body: 'Mulai dari draft, pilih tema, atur isi undangan, lalu aktifkan dan bagikan dengan percaya diri.',
       primary: { label: 'Coba SapaTamu', href: '/produk/sapatamu' },
-      secondary: { label: 'Hubungi Kami', href: 'mailto:hello@rekavia.id' },
+      secondary: { label: 'Hubungi Kami', href: 'mailto:hello@rekavia.com' },
     },
   },
   'pusat-bantuan': {
@@ -266,8 +266,8 @@ const PAGES: Record<string, PageConfig> = {
     support: {
       title: 'Masih butuh bantuan?',
       body: 'Jika belum menemukan jawaban, hubungi tim support agar kami bantu menelusuri kasus Anda.',
-      primary: { label: 'Hubungi Tim Support', href: 'mailto:support@rekavia.id' },
-      secondary: { label: 'Buat Tiket', href: 'mailto:support@rekavia.id?subject=Bantuan%20SapaTamu' },
+      primary: { label: 'Hubungi Tim Support', href: 'mailto:support@rekavia.com' },
+      secondary: { label: 'Buat Tiket', href: 'mailto:support@rekavia.com?subject=Bantuan%20SapaTamu' },
     },
   },
   'panduan-penggunaan': {
@@ -517,7 +517,7 @@ const PAGES: Record<string, PageConfig> = {
         id: 'hubungi-kami',
         title: 'Hubungi kami',
         paragraphs: [
-          'Pertanyaan terkait syarat dan ketentuan dapat dikirim ke support@rekavia.id.',
+          'Pertanyaan terkait syarat dan ketentuan dapat dikirim ke support@rekavia.com.',
         ],
       },
     ],
@@ -597,7 +597,7 @@ const PAGES: Record<string, PageConfig> = {
     contact: {
       title: 'Kontak privasi',
       body: 'Untuk permintaan akses, koreksi, atau penghapusan data, hubungi tim privasi kami melalui email.',
-      email: 'privacy@rekavia.id',
+      email: 'privacy@rekavia.com',
     },
   },
   'hubungi-kami': {
@@ -610,9 +610,9 @@ const PAGES: Record<string, PageConfig> = {
     cards: [
       {
         title: 'Email Admin',
-        value: 'support@rekavia.id',
+        value: 'support@rekavia.com',
         description: 'Untuk bantuan teknis, akun, dan pembayaran.',
-        href: 'mailto:support@rekavia.id',
+        href: 'mailto:support@rekavia.com',
       },
       {
         title: 'WhatsApp',
@@ -631,7 +631,7 @@ const PAGES: Record<string, PageConfig> = {
       description: 'Admin SapaTamu menangani pertanyaan akun, aktivasi tema, dan kendala penggunaan.',
       name: 'Admin SapaTamu',
       role: 'Customer Support',
-      email: 'support@rekavia.id',
+      email: 'support@rekavia.com',
       phone: '+62 812-1234-5678',
       phoneHref: 'https://wa.me/6281212345678',
       hours: 'Senin-Jumat, 09.00-18.00 WIB',
@@ -640,7 +640,7 @@ const PAGES: Record<string, PageConfig> = {
     form: {
       title: 'Kirim pesan',
       description: 'Isi formulir singkat ini. Admin akan menghubungi Anda melalui email atau WhatsApp.',
-      primary: { label: 'Kirim via Email', href: 'mailto:support@rekavia.id' },
+      primary: { label: 'Kirim via Email', href: 'mailto:support@rekavia.com' },
       secondary: { label: 'Chat WhatsApp', href: 'https://wa.me/6281212345678' },
     },
   },

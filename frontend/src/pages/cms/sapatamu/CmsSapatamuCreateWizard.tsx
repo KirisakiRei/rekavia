@@ -20,6 +20,7 @@ import {
   resolveThemeTierCategory,
 } from '@/lib/sapatamu'
 import { cn } from '@/lib/utils'
+import { resolveApiAssetUrl } from '@/lib/api'
 import { useDashboardStore } from '@/stores/dashboardStore'
 import { useSapatamuDraftStore } from '@/stores/sapatamuDraftStore'
 import type {
@@ -110,22 +111,45 @@ function ThemeChooser({
               )}
             >
               <div
-                className="aspect-[5/3] rounded-xl p-4 flex flex-col justify-between"
-                style={{
+                className="aspect-[5/3] rounded-xl overflow-hidden relative flex flex-col justify-between"
+                style={theme.previewImageUrl ? undefined : {
                   background: `linear-gradient(135deg, ${preset.secondaryColor}, ${preset.primaryColor}18)`,
                   color: preset.primaryColor,
+                  padding: '1rem',
                 }}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[10px] tracking-[0.16em] uppercase opacity-60">{resolveThemeGroup(theme)}</p>
-                  <Badge className={cn('border-0 bg-white/75 text-foreground', isComingSoon && 'bg-amber-100 text-amber-800')}>
-                    {isComingSoon ? getThemeReleaseLabel(theme) : getTierCategoryLabel(activeCategory)}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-lg" style={{ fontFamily: preset.fontHeading }}>{theme.name}</p>
-                  <p className="text-xs opacity-70 mt-1">{theme.description}</p>
-                </div>
+                {theme.previewImageUrl ? (
+                  <>
+                    <img
+                      src={resolveApiAssetUrl(theme.previewImageUrl)}
+                      alt={theme.name}
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                    <div className="relative z-10 flex items-start justify-between gap-2 p-4">
+                      <div />
+                      <Badge className={cn('border-0 bg-white/85 text-foreground backdrop-blur-sm', isComingSoon && 'bg-amber-100 text-amber-800')}>
+                        {isComingSoon ? getThemeReleaseLabel(theme) : getTierCategoryLabel(activeCategory)}
+                      </Badge>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[10px] tracking-[0.16em] uppercase opacity-60">{resolveThemeGroup(theme)}</p>
+                      <Badge className={cn('border-0 bg-white/75 text-foreground', isComingSoon && 'bg-amber-100 text-amber-800')}>
+                        {isComingSoon ? getThemeReleaseLabel(theme) : getTierCategoryLabel(activeCategory)}
+                      </Badge>
+                    </div>
+                    <div>
+                      <p className="text-lg" style={{ fontFamily: preset.fontHeading }}>{theme.name}</p>
+                      <p className="text-xs opacity-70 mt-1">{theme.description}</p>
+                    </div>
+                  </>
+                )}
+              </div>
+              <div className="px-1 pt-3 pb-1">
+                <p className="text-sm font-semibold text-foreground">{theme.name}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{theme.description}</p>
               </div>
             </button>
           )

@@ -1,3 +1,3 @@
 export const BRAND = {
-  domain: 'rekavia.id',
+  domain: 'rekavia.com',
 };

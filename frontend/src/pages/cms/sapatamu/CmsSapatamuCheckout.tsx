@@ -146,6 +146,21 @@ export function CmsSapatamuCheckout() {
               </div>
               <SummaryRow label="Subtotal" value={formatRupiah(cart.originalAmount)} />
               <SummaryRow label="Metode" value={PAYMENT_METHODS.find((item) => item.id === selectedMethod)?.label ?? '-'} />
+              {/* Diskon harga spesial — dihitung dari selisih basePrice dan subtotal item */}
+              {(() => {
+                const specialDiscount = cartItems.reduce((sum, item) => {
+                  if (item.kind === 'activation' && item.priceMode === 'special' && item.basePrice) {
+                    return sum + (item.basePrice - (item.subtotal ?? item.price))
+                  }
+                  if (item.kind === 'theme_add_on' && item.normalPrice && item.subtotal) {
+                    return sum + (item.normalPrice - item.subtotal)
+                  }
+                  return sum
+                }, 0)
+                return specialDiscount > 0 ? (
+                  <SummaryRow label="Diskon Spesial" value={`- ${formatRupiah(specialDiscount)}`} accent />
+                ) : null
+              })()}
               {isActivationCheckout ? (
                 <div className="rounded-2xl border border-border p-4 space-y-3">
                   <div className="flex items-center gap-2">
@@ -166,17 +181,20 @@ export function CmsSapatamuCheckout() {
                             setCart(nextCart)
                             setVoucherCode(nextCart?.voucher?.code ?? '')
                           })
-                          .catch(() => setError('Voucher hanya berlaku untuk aktivasi tema utama.'))
+                          .catch(() => setError('Voucher tidak valid atau tidak berlaku.'))
                           .finally(() => setIsSubmitting(false))
                       }}
                     >
                       Apply
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground">Voucher dihitung dari harga normal aktivasi, sehingga harga spesial tidak digabung dengan voucher.</p>
+                  <p className="text-xs text-muted-foreground">Masukkan kode voucher jika Anda memilikinya.</p>
                 </div>
               ) : null}
-              <SummaryRow label="Voucher" value={cart.discountAmount ? `- ${formatRupiah(cart.discountAmount)}` : '-'} />
+              {/* Voucher — tampil jika ada voucher yang di-apply */}
+              {cart.voucher ? (
+                <SummaryRow label={`Voucher (${cart.voucher.code})`} value={`- ${formatRupiah(cart.discountAmount)}`} accent />
+              ) : null}
               <div className="pt-2 border-t border-border flex items-center justify-between gap-4">
                 <p className="font-semibold text-foreground">Total</p>
                 <p className="text-xl font-semibold text-foreground">{formatRupiah(cart.totalAmount)}</p>
@@ -208,11 +226,11 @@ export function CmsSapatamuCheckout() {
   )
 }
 
-function SummaryRow({ label, value }: { label: string; value: string }) {
+function SummaryRow({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div className="flex items-center justify-between gap-4">
       <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="text-sm text-foreground">{value}</p>
+      <p className={`text-sm ${accent ? 'text-accent font-medium' : 'text-foreground'}`}>{value}</p>
     </div>
   )
 }

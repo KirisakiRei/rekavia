@@ -1441,7 +1441,7 @@ export class SapatamuService {
   }
 
   private buildPersonalizedUrl(slug: string, guestName: string): string {
-    return `https://${BRAND.domain}/u/${slug}?to=${encodeURIComponent(guestName)}`;
+    return `https://${BRAND.domain}/${slug}?to=${encodeURIComponent(guestName)}`;
   }
 
   private buildEditorVariableCatalog(
@@ -1653,7 +1653,7 @@ export class SapatamuService {
         id: invitation.id,
         title: invitation.title,
         slug,
-        publicUrl: `https://${BRAND.domain}/u/${slug}`,
+        publicUrl: `https://${BRAND.domain}/${slug}`,
         previewUrl: `/cms/sapatamu/${invitation.id}/editor`,
         status: invitation.status,
         theme: invitation.template
@@ -1716,7 +1716,7 @@ export class SapatamuService {
         autoSaveDelayMs: 500,
         availableVariables: this.buildEditorVariableCatalog(
           document,
-          `https://${BRAND.domain}/u/${slug}`,
+          `https://${BRAND.domain}/${slug}`,
         ),
       },
     };
@@ -1972,7 +1972,7 @@ export class SapatamuService {
         title: invitation.title,
         status: invitation.status,
         slug,
-        publicUrl: `https://${BRAND.domain}/u/${slug}`,
+        publicUrl: `https://${BRAND.domain}/${slug}`,
         previewUrl: `/cms/sapatamu/${invitation.id}/editor`,
         canPublicOpen: invitation.status === 'published',
         activationState: invitation.status === 'published' ? 'active' : 'needs_activation',
@@ -2005,7 +2005,7 @@ export class SapatamuService {
           title: resolvedMetaTitle,
           titleTemplate: content.meta.titleTemplate,
           date: resolvedMetaDate,
-          link: `https://${BRAND.domain}/u/${slug}`,
+          link: `https://${BRAND.domain}/${slug}`,
           imageUrl: content.meta.imageUrl,
         },
       },

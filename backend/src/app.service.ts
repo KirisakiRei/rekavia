@@ -127,7 +127,7 @@ export class AppService {
       ? new URL(content.meta.imageUrl, `https://${BRAND.domain}`).toString()
       : `https://${BRAND.domain}/logo/brand-logo.png`;
     const frontendBase = process.env.FRONTEND_PUBLIC_URL || `https://${BRAND.domain}`;
-    const appUrl = `${frontendBase}/u/${encodeURIComponent(slug)}${guestName ? `?to=${encodeURIComponent(guestName)}` : ''}`;
+    const appUrl = `${frontendBase}/${encodeURIComponent(slug)}${guestName ? `?to=${encodeURIComponent(guestName)}` : ''}`;
 
     return `<!doctype html>
 <html lang="id">
