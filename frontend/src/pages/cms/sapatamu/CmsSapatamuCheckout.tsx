@@ -118,13 +118,12 @@ export function CmsSapatamuCheckout() {
               <p className="font-semibold text-foreground">Ringkasan Pembayaran</p>
               <div className="space-y-3">
                 {cartItems.map((item, index) => {
-                  const hasSpecialDiscount = item.kind === 'activation' && item.priceMode === 'special' && item.basePrice
-                  const hasAddonDiscount = item.kind === 'theme_add_on' && item.addonSlot === 2 && item.normalPrice
-                  // Subtotal sebelum voucher = totalAmount + discountAmount (jika ada voucher)
-                  const subtotalBeforeVoucher = cart.totalAmount + (cart.voucher ? cart.discountAmount : 0)
-                  // Hitung persen diskon dari selisih harga asli dan harga setelah diskon
-                  const discountPercent = hasSpecialDiscount && item.basePrice
-                    ? Math.round(((item.basePrice - subtotalBeforeVoucher) / item.basePrice) * 100)
+                  // Harga setelah diskon spesial (sebelum voucher) — dari backend
+                  const subtotalAfterSpecial = cart.totalAmount + (cart.voucher ? cart.discountAmount : 0)
+                  // Cek apakah ada diskon: originalAmount > subtotalAfterSpecial
+                  const hasDiscount = cart.originalAmount > subtotalAfterSpecial
+                  const discountPercent = hasDiscount
+                    ? Math.round(((cart.originalAmount - subtotalAfterSpecial) / cart.originalAmount) * 100)
                     : 0
 
                   return (
@@ -136,21 +135,15 @@ export function CmsSapatamuCheckout() {
                               ? `Aktivasi ${item.themeName ?? item.packageName}`
                               : `Tema add-on ${item.addonSlot ?? index + 1}${item.themeName ? ` - ${item.themeName}` : ''}`}
                           </p>
-                          {hasSpecialDiscount ? (
+                          {hasDiscount ? (
                             <p className="mt-1 text-xs">
-                              <span className="text-muted-foreground line-through">{formatRupiah(item.basePrice!)}</span>
+                              <span className="text-muted-foreground line-through">{formatRupiah(cart.originalAmount)}</span>
                               <span className="ml-2 text-accent">Diskon {discountPercent}%</span>
-                            </p>
-                          ) : null}
-                          {hasAddonDiscount ? (
-                            <p className="mt-1 text-xs">
-                              <span className="text-muted-foreground line-through">{formatRupiah(item.normalPrice!)}</span>
-                              <span className="ml-2 text-accent">Harga tema kedua</span>
                             </p>
                           ) : null}
                         </div>
                         <p className="shrink-0 text-sm font-semibold text-foreground">
-                          {formatRupiah(subtotalBeforeVoucher)}
+                          {formatRupiah(subtotalAfterSpecial)}
                         </p>
                       </div>
                     </div>
@@ -158,7 +151,7 @@ export function CmsSapatamuCheckout() {
                 })}
               </div>
 
-              {/* Subtotal = harga setelah diskon spesial (sebelum voucher) — langsung dari backend */}
+              {/* Subtotal = harga setelah diskon spesial, sebelum voucher */}
               <SummaryRow label="Subtotal" value={formatRupiah(cart.totalAmount + (cart.voucher ? cart.discountAmount : 0))} />
 
               {/* Voucher input */}

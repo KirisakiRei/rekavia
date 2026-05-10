@@ -66,11 +66,10 @@ export function CmsSapatamuCart() {
               </div>
 
               {cartItems.map((item, index) => {
-                const hasSpecialDiscount = item.kind === 'activation' && item.priceMode === 'special' && item.basePrice
-                const hasAddonDiscount = item.kind === 'theme_add_on' && item.addonSlot === 2 && item.normalPrice
-                // Hitung persen diskon dari selisih harga asli dan harga final
-                const discountPercent = hasSpecialDiscount && item.basePrice
-                  ? Math.round(((item.basePrice - cart.totalAmount) / item.basePrice) * 100)
+                // Cek diskon dari selisih originalAmount vs totalAmount
+                const hasDiscount = cart.originalAmount > cart.totalAmount
+                const discountPercent = hasDiscount
+                  ? Math.round(((cart.originalAmount - cart.totalAmount) / cart.originalAmount) * 100)
                   : 0
 
                 return (
@@ -82,16 +81,10 @@ export function CmsSapatamuCart() {
                           : `Tema add-on ${item.addonSlot ?? index + 1}${item.themeName ? ` - ${item.themeName}` : ''}`}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">{item.packageCode}</p>
-                      {hasSpecialDiscount ? (
+                      {hasDiscount ? (
                         <p className="text-xs mt-1">
-                          <span className="text-muted-foreground line-through">{formatRupiah(item.basePrice!)}</span>
+                          <span className="text-muted-foreground line-through">{formatRupiah(cart.originalAmount)}</span>
                           <span className="ml-2 text-accent">Diskon {discountPercent}%</span>
-                        </p>
-                      ) : null}
-                      {hasAddonDiscount ? (
-                        <p className="text-xs mt-1">
-                          <span className="text-muted-foreground line-through">{formatRupiah(item.normalPrice!)}</span>
-                          <span className="ml-2 text-accent">Harga tema kedua</span>
                         </p>
                       ) : null}
                     </div>
