@@ -65,31 +65,40 @@ export function CmsSapatamuCart() {
                 <Badge className="border-0 bg-muted text-foreground">{cartItems.length} item</Badge>
               </div>
 
-              {cartItems.map((item, index) => (
-                <div key={`${item.packageId}-${index}`} className="rounded-2xl bg-muted/35 p-4 flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">
-                      {item.kind === 'activation'
-                        ? `Aktivasi ${item.themeName ?? item.packageName}`
-                        : `Tema add-on ${item.addonSlot ?? index + 1}${item.themeName ? ` - ${item.themeName}` : ''}`}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">{item.packageCode}</p>
-                    {item.kind === 'activation' && item.priceMode === 'special' && item.basePrice ? (
-                      <p className="text-xs mt-1">
-                        <span className="text-muted-foreground line-through">{formatRupiah(item.basePrice)}</span>
-                        <span className="ml-2 text-accent">Diskon {item.specialDiscountPercent ?? 20}%</span>
+              {cartItems.map((item, index) => {
+                // Hitung harga setelah diskon per item
+                const hasSpecialDiscount = item.kind === 'activation' && item.priceMode === 'special' && item.basePrice
+                const hasAddonDiscount = item.kind === 'theme_add_on' && item.addonSlot === 2 && item.normalPrice
+                const discountPercent = hasSpecialDiscount
+                  ? Math.round((1 - cart.totalAmount / (item.basePrice ?? item.price)) * 100)
+                  : 0
+
+                return (
+                  <div key={`${item.packageId}-${index}`} className="rounded-2xl bg-muted/35 p-4 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">
+                        {item.kind === 'activation'
+                          ? `Aktivasi ${item.themeName ?? item.packageName}`
+                          : `Tema add-on ${item.addonSlot ?? index + 1}${item.themeName ? ` - ${item.themeName}` : ''}`}
                       </p>
-                    ) : null}
-                    {item.kind === 'theme_add_on' && item.addonSlot === 2 && item.normalPrice ? (
-                      <p className="text-xs mt-1">
-                        <span className="text-muted-foreground line-through">{formatRupiah(item.normalPrice)}</span>
-                        <span className="ml-2 text-accent">Harga tema kedua</span>
-                      </p>
-                    ) : null}
+                      <p className="text-xs text-muted-foreground mt-1">{item.packageCode}</p>
+                      {hasSpecialDiscount ? (
+                        <p className="text-xs mt-1">
+                          <span className="text-muted-foreground line-through">{formatRupiah(item.basePrice!)}</span>
+                          <span className="ml-2 text-accent">Diskon {discountPercent}%</span>
+                        </p>
+                      ) : null}
+                      {hasAddonDiscount ? (
+                        <p className="text-xs mt-1">
+                          <span className="text-muted-foreground line-through">{formatRupiah(item.normalPrice!)}</span>
+                          <span className="ml-2 text-accent">Harga tema kedua</span>
+                        </p>
+                      ) : null}
+                    </div>
+                    <p className="text-xl font-semibold text-foreground">{formatRupiah(cartItems.length === 1 ? cart.totalAmount : (item.subtotal ?? item.price))}</p>
                   </div>
-                  <p className="text-xl font-semibold text-foreground">{formatRupiah(item.subtotal ?? item.price)}</p>
-                </div>
-              ))}
+                )
+              })}
             </div>
 
             <div className="rounded-[1.7rem] border border-border bg-card p-6 space-y-4 h-fit">
@@ -97,12 +106,19 @@ export function CmsSapatamuCart() {
                 <ShoppingCart className="w-4 h-4 text-accent" />
                 <p className="font-semibold text-foreground">Ringkasan Belanja</p>
               </div>
-              <SummaryRow label="Subtotal" value={formatRupiah(cart.originalAmount)} />
-              {cart.originalAmount !== cart.totalAmount && (
-                <div className="flex items-center justify-between gap-4">
-                  <p className="text-sm text-muted-foreground">Diskon Spesial</p>
-                  <p className="text-sm text-accent font-medium">- {formatRupiah(cart.originalAmount - cart.totalAmount)}</p>
-                </div>
+              {cart.originalAmount !== cart.totalAmount ? (
+                <>
+                  <div className="flex items-center justify-between gap-4">
+                    <p className="text-sm text-muted-foreground">Harga Normal</p>
+                    <p className="text-sm text-muted-foreground line-through">{formatRupiah(cart.originalAmount)}</p>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <p className="text-sm text-muted-foreground">Diskon Spesial</p>
+                    <p className="text-sm text-accent font-medium">- {formatRupiah(cart.originalAmount - cart.totalAmount)}</p>
+                  </div>
+                </>
+              ) : (
+                <SummaryRow label="Subtotal" value={formatRupiah(cart.totalAmount)} />
               )}
               <div className="pt-2 border-t border-border flex items-center justify-between gap-4">
                 <p className="font-semibold text-foreground">Total</p>

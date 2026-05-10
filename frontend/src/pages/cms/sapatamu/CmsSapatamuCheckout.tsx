@@ -117,51 +117,49 @@ export function CmsSapatamuCheckout() {
             <div className="h-fit space-y-4 rounded-[1.7rem] border border-border bg-card p-6 xl:sticky xl:top-6">
               <p className="font-semibold text-foreground">Ringkasan Pembayaran</p>
               <div className="space-y-3">
-                {cartItems.map((item, index) => (
-                  <div key={`${item.packageId}-${index}`} className="rounded-2xl bg-muted/35 p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">
-                          {item.kind === 'activation'
-                            ? `Aktivasi ${item.themeName ?? item.packageName}`
-                            : `Tema add-on ${item.addonSlot ?? index + 1}${item.themeName ? ` - ${item.themeName}` : ''}`}
+                {cartItems.map((item, index) => {
+                  const hasSpecialDiscount = item.kind === 'activation' && item.priceMode === 'special' && item.basePrice
+                  const hasAddonDiscount = item.kind === 'theme_add_on' && item.addonSlot === 2 && item.normalPrice
+                  // Harga setelah diskon spesial (sebelum voucher)
+                  const priceAfterDiscount = hasSpecialDiscount
+                    ? Math.round((item.basePrice!) * (1 - (item.specialDiscountPercent ?? 20) / 100))
+                    : (item.subtotal ?? item.price)
+
+                  return (
+                    <div key={`${item.packageId}-${index}`} className="rounded-2xl bg-muted/35 p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            {item.kind === 'activation'
+                              ? `Aktivasi ${item.themeName ?? item.packageName}`
+                              : `Tema add-on ${item.addonSlot ?? index + 1}${item.themeName ? ` - ${item.themeName}` : ''}`}
+                          </p>
+                          {hasSpecialDiscount ? (
+                            <p className="mt-1 text-xs">
+                              <span className="text-muted-foreground line-through">{formatRupiah(item.basePrice!)}</span>
+                              <span className="ml-2 text-accent">Diskon {item.specialDiscountPercent ?? 20}%</span>
+                            </p>
+                          ) : null}
+                          {hasAddonDiscount ? (
+                            <p className="mt-1 text-xs">
+                              <span className="text-muted-foreground line-through">{formatRupiah(item.normalPrice!)}</span>
+                              <span className="ml-2 text-accent">Harga tema kedua</span>
+                            </p>
+                          ) : null}
+                        </div>
+                        <p className="shrink-0 text-sm font-semibold text-foreground">
+                          {formatRupiah(priceAfterDiscount)}
                         </p>
-                        {item.kind === 'activation' && item.priceMode === 'special' && item.basePrice ? (
-                          <p className="mt-1 text-xs">
-                            <span className="text-muted-foreground line-through">{formatRupiah(item.basePrice)}</span>
-                            <span className="ml-2 text-accent">Diskon {item.specialDiscountPercent ?? 20}%</span>
-                          </p>
-                        ) : null}
-                        {item.kind === 'theme_add_on' && item.addonSlot === 2 && item.normalPrice ? (
-                          <p className="mt-1 text-xs">
-                            <span className="text-muted-foreground line-through">{formatRupiah(item.normalPrice)}</span>
-                            <span className="ml-2 text-accent">Harga tema kedua</span>
-                          </p>
-                        ) : null}
                       </div>
-                      <p className="shrink-0 text-sm font-semibold text-foreground">
-                        {formatRupiah(
-                          item.kind === 'activation' && item.priceMode === 'special' && item.basePrice
-                            ? (item.subtotal ?? item.price) < item.basePrice
-                              ? (item.subtotal ?? item.price)
-                              : Math.round(item.basePrice * (1 - (item.specialDiscountPercent ?? 20) / 100))
-                            : (item.subtotal ?? item.price)
-                        )}
-                      </p>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
-              <SummaryRow label="Subtotal" value={formatRupiah(cart.originalAmount)} strikethrough={cart.originalAmount !== cart.totalAmount} />
-              <SummaryRow label="Metode" value={PAYMENT_METHODS.find((item) => item.id === selectedMethod)?.label ?? '-'} />
-              {/* Diskon harga spesial */}
-              {cart.originalAmount > cart.totalAmount + (cart.voucher ? cart.discountAmount : 0) ? (
-                <SummaryRow
-                  label="Diskon Spesial"
-                  value={`- ${formatRupiah(cart.originalAmount - cart.totalAmount - (cart.voucher ? cart.discountAmount : 0))}`}
-                  accent
-                />
-              ) : null}
+
+              {/* Subtotal = harga setelah diskon spesial (sebelum voucher) */}
+              <SummaryRow label="Subtotal" value={formatRupiah(cart.totalAmount + (cart.voucher ? cart.discountAmount : 0))} />
+
+              {/* Voucher input */}
               {isActivationCheckout ? (
                 <div className="rounded-2xl border border-border p-4 space-y-3">
                   <div className="flex items-center gap-2">
@@ -192,13 +190,31 @@ export function CmsSapatamuCheckout() {
                   <p className="text-xs text-muted-foreground">Masukkan kode voucher jika Anda memilikinya.</p>
                 </div>
               ) : null}
-              {/* Voucher — tampil jika ada voucher yang di-apply */}
+
+              {/* Voucher applied */}
               {cart.voucher ? (
-                <SummaryRow label={`Voucher (${cart.voucher.code})`} value={`- ${formatRupiah(cart.discountAmount)}`} accent />
+                <SummaryRow label={`Voucher (${cart.voucher.code}) ${cart.voucher.label ?? ''}`} value={`- ${formatRupiah(cart.discountAmount)}`} accent />
               ) : null}
+
+              {/* Biaya layanan */}
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-sm text-muted-foreground">Biaya layanan</p>
+                  <span className="relative group">
+                    <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-muted text-[10px] text-muted-foreground cursor-help">?</span>
+                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 rounded-lg bg-foreground text-background text-[11px] p-2.5 leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-10">
+                      Biaya operasional untuk memastikan transaksi Anda diproses dengan aman dan lancar.
+                    </span>
+                  </span>
+                </div>
+                <p className="text-sm text-foreground">{formatRupiah(5000)}</p>
+              </div>
+
+              <SummaryRow label="Metode" value={PAYMENT_METHODS.find((item) => item.id === selectedMethod)?.label ?? '-'} />
+
               <div className="pt-2 border-t border-border flex items-center justify-between gap-4">
                 <p className="font-semibold text-foreground">Total</p>
-                <p className="text-xl font-semibold text-foreground">{formatRupiah(cart.totalAmount)}</p>
+                <p className="text-xl font-semibold text-foreground">{formatRupiah(cart.totalAmount + 5000)}</p>
               </div>
               <Button
                 className="w-full"
@@ -227,11 +243,11 @@ export function CmsSapatamuCheckout() {
   )
 }
 
-function SummaryRow({ label, value, accent, strikethrough }: { label: string; value: string; accent?: boolean; strikethrough?: boolean }) {
+function SummaryRow({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div className="flex items-center justify-between gap-4">
       <p className="text-sm text-muted-foreground">{label}</p>
-      <p className={`text-sm ${accent ? 'text-accent font-medium' : 'text-foreground'} ${strikethrough ? 'line-through text-muted-foreground' : ''}`}>{value}</p>
+      <p className={`text-sm ${accent ? 'text-accent font-medium' : 'text-foreground'}`}>{value}</p>
     </div>
   )
 }
