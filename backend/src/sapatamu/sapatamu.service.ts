@@ -2310,30 +2310,48 @@ export class SapatamuService {
     }
     this.assertThemeAvailableForSelection(selectedTheme);
     const selectedThemeId = selectedTheme.id;
-    await this.assertSlugAvailability(suggestedSlug, { excludeUserId: user.id });
 
-    // Cleanup: soft-delete draft lama milik user yang masih in_progress dengan slug yang sama
+    // Cleanup: soft-delete draft lama milik user yang masih in_progress
     await this.db.invitationDraft.updateMany({
       where: {
         user_id: user.id,
-        slug_candidate: suggestedSlug,
         status: InvitationDraftStatus.in_progress,
         deleted_at: null,
       },
       data: { deleted_at: new Date() },
     });
 
+    // Cek slug availability — jika konflik, tambahkan suffix angka
+    let finalSlug = suggestedSlug;
+    let slugAttempt = 0;
+    const maxAttempts = 10;
+
+    while (slugAttempt < maxAttempts) {
+      try {
+        await this.assertSlugAvailability(finalSlug, { excludeUserId: user.id });
+        break; // slug tersedia
+      } catch {
+        slugAttempt += 1;
+        finalSlug = `${suggestedSlug}-${slugAttempt}`;
+      }
+    }
+
+    if (slugAttempt >= maxAttempts) {
+      // Fallback: gunakan timestamp
+      finalSlug = `${suggestedSlug}-${Date.now().toString(36).slice(-4)}`;
+    }
+
     const draft = await this.db.invitationDraft.create({
       data: {
         user_id: user.id,
         product_category: 'sapatamu',
-        slug_candidate: suggestedSlug,
+        slug_candidate: finalSlug,
         theme_id: selectedThemeId,
         selected_package_id: null,
         wizard_json: buildDefaultDraftWizard({
           step: toNumber(payload.step, 0),
           invitationName: typeof payload.invitationName === 'string' ? payload.invitationName : '',
-          slugCandidate: suggestedSlug,
+          slugCandidate: finalSlug,
           themeId: selectedThemeId,
           selectedPackageId: null,
           profiles,
