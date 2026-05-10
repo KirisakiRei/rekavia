@@ -66,10 +66,12 @@ export function CmsSapatamuCart() {
               </div>
 
               {cartItems.map((item, index) => {
-                // Cek diskon dari selisih originalAmount vs totalAmount
-                const hasDiscount = cart.originalAmount > cart.totalAmount
-                const discountPercent = hasDiscount
-                  ? Math.round(((cart.originalAmount - cart.totalAmount) / cart.originalAmount) * 100)
+                // Harga per item dari backend
+                const itemPrice = item.subtotal ?? item.price
+                const itemOriginalPrice = item.normalPrice ?? item.basePrice ?? 0
+                const hasItemDiscount = itemOriginalPrice > 0 && itemOriginalPrice > itemPrice
+                const itemDiscountPercent = hasItemDiscount
+                  ? Math.round(((itemOriginalPrice - itemPrice) / itemOriginalPrice) * 100)
                   : 0
 
                 return (
@@ -81,14 +83,14 @@ export function CmsSapatamuCart() {
                           : `Tema add-on ${item.addonSlot ?? index + 1}${item.themeName ? ` - ${item.themeName}` : ''}`}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">{item.packageCode}</p>
-                      {hasDiscount ? (
+                      {hasItemDiscount ? (
                         <p className="text-xs mt-1">
-                          <span className="text-muted-foreground line-through">{formatRupiah(cart.originalAmount)}</span>
-                          <span className="ml-2 text-accent">Diskon {discountPercent}%</span>
+                          <span className="text-muted-foreground line-through">{formatRupiah(itemOriginalPrice)}</span>
+                          <span className="ml-2 text-accent">Diskon {itemDiscountPercent}%</span>
                         </p>
                       ) : null}
                     </div>
-                    <p className="text-xl font-semibold text-foreground">{formatRupiah(cart.totalAmount)}</p>
+                    <p className="text-xl font-semibold text-foreground">{formatRupiah(itemPrice)}</p>
                   </div>
                 )
               })}
