@@ -74,9 +74,16 @@ export function CmsSapatamuCart() {
                         : `Tema add-on ${item.addonSlot ?? index + 1}${item.themeName ? ` - ${item.themeName}` : ''}`}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">{item.packageCode}</p>
-                    {item.kind === 'theme_add_on' && item.addonSlot === 2 ? (
-                      <p className="text-xs text-accent mt-1">
-                        Harga tema kedua <span className="text-muted-foreground line-through">{formatRupiah(item.normalPrice ?? 150000)}</span>
+                    {item.kind === 'activation' && item.priceMode === 'special' && item.basePrice ? (
+                      <p className="text-xs mt-1">
+                        <span className="text-muted-foreground line-through">{formatRupiah(item.basePrice)}</span>
+                        <span className="ml-2 text-accent">Diskon {item.specialDiscountPercent ?? 20}%</span>
+                      </p>
+                    ) : null}
+                    {item.kind === 'theme_add_on' && item.addonSlot === 2 && item.normalPrice ? (
+                      <p className="text-xs mt-1">
+                        <span className="text-muted-foreground line-through">{formatRupiah(item.normalPrice)}</span>
+                        <span className="ml-2 text-accent">Harga tema kedua</span>
                       </p>
                     ) : null}
                   </div>
@@ -91,7 +98,12 @@ export function CmsSapatamuCart() {
                 <p className="font-semibold text-foreground">Ringkasan Belanja</p>
               </div>
               <SummaryRow label="Subtotal" value={formatRupiah(cart.originalAmount)} />
-              <SummaryRow label="Voucher" value={cart.discountAmount ? `- ${formatRupiah(cart.discountAmount)}` : '-'} />
+              {cart.originalAmount !== cart.totalAmount && (
+                <div className="flex items-center justify-between gap-4">
+                  <p className="text-sm text-muted-foreground">Diskon Spesial</p>
+                  <p className="text-sm text-accent font-medium">- {formatRupiah(cart.originalAmount - cart.totalAmount)}</p>
+                </div>
+              )}
               <div className="pt-2 border-t border-border flex items-center justify-between gap-4">
                 <p className="font-semibold text-foreground">Total</p>
                 <p className="text-xl font-semibold text-foreground">{formatRupiah(cart.totalAmount)}</p>
