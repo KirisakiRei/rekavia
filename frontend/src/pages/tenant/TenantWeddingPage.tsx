@@ -656,12 +656,17 @@ export function TenantWeddingPage() {
         const contentWeddingData = content?.weddingData ?? {}
 
         // ── Update nama mempelai lebih awal agar loading screen menampilkan nama terbaru
-        const earlyBrideName = (contentWeddingData as Record<string, unknown>).brideName as string | undefined
-          ?? invitation?.bride_name
-          ?? ''
-        const earlyGroomName = (contentWeddingData as Record<string, unknown>).groomName as string | undefined
-          ?? invitation?.groom_name
-          ?? ''
+        // Prioritas: profiles (editor v3) → invitation table → weddingData (legacy)
+        const profileBrideName = content?.profiles?.[1]?.fullName ?? ''
+        const profileGroomName = content?.profiles?.[0]?.fullName ?? ''
+        const earlyBrideName = profileBrideName
+          || invitation?.bride_name
+          || (contentWeddingData as Record<string, unknown>).brideName as string | undefined
+          || ''
+        const earlyGroomName = profileGroomName
+          || invitation?.groom_name
+          || (contentWeddingData as Record<string, unknown>).groomName as string | undefined
+          || ''
         if (earlyBrideName || earlyGroomName) {
           setWeddingData((prev) => ({
             ...prev,
@@ -724,8 +729,8 @@ export function TenantWeddingPage() {
         setWeddingData({
           ...DEFAULT_WEDDING_DATA,
           ...contentWeddingData,
-          brideName: contentWeddingData.brideName ?? invitation?.bride_name ?? '',
-          groomName: contentWeddingData.groomName ?? invitation?.groom_name ?? '',
+          brideName: profileBrideName || invitation?.bride_name || contentWeddingData.brideName || '',
+          groomName: profileGroomName || invitation?.groom_name || contentWeddingData.groomName || '',
           akadTime: contentWeddingData.akadTime ?? invitation?.event_date ?? '',
         })
 
