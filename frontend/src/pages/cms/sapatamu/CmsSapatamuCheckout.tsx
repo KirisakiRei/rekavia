@@ -120,10 +120,12 @@ export function CmsSapatamuCheckout() {
                 {cartItems.map((item, index) => {
                   const hasSpecialDiscount = item.kind === 'activation' && item.priceMode === 'special' && item.basePrice
                   const hasAddonDiscount = item.kind === 'theme_add_on' && item.addonSlot === 2 && item.normalPrice
-                  // Harga setelah diskon spesial (sebelum voucher)
-                  const priceAfterDiscount = hasSpecialDiscount
-                    ? Math.round((item.basePrice!) * (1 - (item.specialDiscountPercent ?? 20) / 100))
-                    : (item.subtotal ?? item.price)
+                  // Subtotal sebelum voucher = totalAmount + discountAmount (jika ada voucher)
+                  const subtotalBeforeVoucher = cart.totalAmount + (cart.voucher ? cart.discountAmount : 0)
+                  // Hitung persen diskon dari selisih harga asli dan harga setelah diskon
+                  const discountPercent = hasSpecialDiscount && item.basePrice
+                    ? Math.round(((item.basePrice - subtotalBeforeVoucher) / item.basePrice) * 100)
+                    : 0
 
                   return (
                     <div key={`${item.packageId}-${index}`} className="rounded-2xl bg-muted/35 p-4">
@@ -137,7 +139,7 @@ export function CmsSapatamuCheckout() {
                           {hasSpecialDiscount ? (
                             <p className="mt-1 text-xs">
                               <span className="text-muted-foreground line-through">{formatRupiah(item.basePrice!)}</span>
-                              <span className="ml-2 text-accent">Diskon {item.specialDiscountPercent ?? 20}%</span>
+                              <span className="ml-2 text-accent">Diskon {discountPercent}%</span>
                             </p>
                           ) : null}
                           {hasAddonDiscount ? (
@@ -148,7 +150,7 @@ export function CmsSapatamuCheckout() {
                           ) : null}
                         </div>
                         <p className="shrink-0 text-sm font-semibold text-foreground">
-                          {formatRupiah(priceAfterDiscount)}
+                          {formatRupiah(subtotalBeforeVoucher)}
                         </p>
                       </div>
                     </div>
@@ -156,7 +158,7 @@ export function CmsSapatamuCheckout() {
                 })}
               </div>
 
-              {/* Subtotal = harga setelah diskon spesial (sebelum voucher) */}
+              {/* Subtotal = harga setelah diskon spesial (sebelum voucher) — langsung dari backend */}
               <SummaryRow label="Subtotal" value={formatRupiah(cart.totalAmount + (cart.voucher ? cart.discountAmount : 0))} />
 
               {/* Voucher input */}

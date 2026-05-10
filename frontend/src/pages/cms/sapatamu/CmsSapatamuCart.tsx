@@ -66,11 +66,11 @@ export function CmsSapatamuCart() {
               </div>
 
               {cartItems.map((item, index) => {
-                // Hitung harga setelah diskon per item
                 const hasSpecialDiscount = item.kind === 'activation' && item.priceMode === 'special' && item.basePrice
                 const hasAddonDiscount = item.kind === 'theme_add_on' && item.addonSlot === 2 && item.normalPrice
-                const discountPercent = hasSpecialDiscount
-                  ? Math.round((1 - cart.totalAmount / (item.basePrice ?? item.price)) * 100)
+                // Hitung persen diskon dari selisih harga asli dan harga final
+                const discountPercent = hasSpecialDiscount && item.basePrice
+                  ? Math.round(((item.basePrice - cart.totalAmount) / item.basePrice) * 100)
                   : 0
 
                 return (
@@ -95,7 +95,7 @@ export function CmsSapatamuCart() {
                         </p>
                       ) : null}
                     </div>
-                    <p className="text-xl font-semibold text-foreground">{formatRupiah(cartItems.length === 1 ? cart.totalAmount : (item.subtotal ?? item.price))}</p>
+                    <p className="text-xl font-semibold text-foreground">{formatRupiah(cart.totalAmount)}</p>
                   </div>
                 )
               })}
@@ -110,7 +110,7 @@ export function CmsSapatamuCart() {
                 <>
                   <div className="flex items-center justify-between gap-4">
                     <p className="text-sm text-muted-foreground">Harga Normal</p>
-                    <p className="text-sm text-muted-foreground line-through">{formatRupiah(cart.originalAmount)}</p>
+                    <p className="text-sm text-muted-foreground">{formatRupiah(cart.originalAmount)}</p>
                   </div>
                   <div className="flex items-center justify-between gap-4">
                     <p className="text-sm text-muted-foreground">Diskon Spesial</p>
