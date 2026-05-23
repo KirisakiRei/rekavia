@@ -5,7 +5,7 @@ export const CALLA_LILY_PLUM_RED_LEAD_SOURCE = {
   "id": "0194f590-efb5-7b51-8fb7-bf5f3f4b80bf",
   "name": "Calla Lily Plum - Red lead",
   "slug": "calla-lily-plum-red-lead",
-  "cover": "https://be.satu.love/pictures/picture_1739338788188xkqpvsi.png",
+  "cover": "/sapatamu-themes/calla-lily-plum-red-lead/original/pictures/picture_1739338788188xkqpvsi.png",
   "background": "https://be.satu.love/albums/album_1739411677066erwv7a5.jpeg",
   "frames": {
     "style": {

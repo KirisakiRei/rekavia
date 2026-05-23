@@ -5,7 +5,7 @@ export const BATAK_ETHNIC_MAROON_MISTYROSE_SOURCE = {
   "id": "0194f590-efc0-7cc3-8cdd-a484ca9764a6",
   "name": "Batak ethnic - maroon mistyrose",
   "slug": "batak-ethnic-maroon-mistyrose",
-  "cover": "https://be.satu.love/pictures/picture_1739377539664wswbzef.jpeg",
+  "cover": "/sapatamu-themes/batak-ethnic-maroon-mistyrose/original/pictures/picture_1739377539664wswbzef.png",
   "background": "https://be.satu.love/pictures/picture_170778647164894xcmz8.jpeg",
   "frames": {
     "style": {

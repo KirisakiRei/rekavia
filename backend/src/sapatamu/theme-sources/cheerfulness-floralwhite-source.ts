@@ -5,7 +5,7 @@ export const CHEERFULNESS_FLORALWHITE_SOURCE = {
   "id": "0194f590-efc2-7a42-bcf9-748a2d61ffe2",
   "name": "Cheerfulness - floralwhite",
   "slug": "cheerfulness-floralwhite",
-  "cover": "https://be.satu.love/pictures/picture_17393762970235qag6qp.png",
+  "cover": "/sapatamu-themes/cheerfulness-floralwhite/original/pictures/picture_17393762970235qag6qp.png",
   "background": "https://be.satu.love/pictures/picture_1711527076541ge978oj.jpeg",
   "frames": {
     "style": {

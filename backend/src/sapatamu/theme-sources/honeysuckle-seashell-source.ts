@@ -5,7 +5,7 @@ export const HONEYSUCKLE_SEASHELL_SOURCE = {
   "id": "0194f590-efc4-7a82-bf72-23d993531344",
   "name": "Honeysuckle - seashell",
   "slug": "honeysuckle-seashell",
-  "cover": "https://be.satu.love/pictures/picture_173937383935637doz57.png",
+  "cover": "/sapatamu-themes/honeysuckle-seashell/original/pictures/picture_173937383935637doz57.png",
   "background": "https://be.satu.love/pictures/picture_1728955448863yshliqlh.jpeg",
   "frames": {
     "style": {

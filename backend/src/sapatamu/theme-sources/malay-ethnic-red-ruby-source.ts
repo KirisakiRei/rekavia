@@ -6,7 +6,7 @@ export const MALAY_ETHNIC_RED_RUBY_SOURCE = {
   "id": "0194f590-efc0-7cc3-8cdd-a3a4a2e7c0a1",
   "name": "Malay ethnic - Red ruby",
   "slug": "malay-ethnic-red-ruby",
-  "cover": "https://be.satu.love/pictures/picture_17393765661722ej1do.jpeg",
+  "cover": "/sapatamu-themes/malay-ethnic-red-ruby/original/pictures/picture_17393765661722ej1do.png",
   "background": "https://be.satu.love/pictures/picture_17044658190466dpttoc.jpeg",
   "background_details": {
     "type": 2,

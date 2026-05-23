@@ -5,7 +5,7 @@ export const JAVANESE_LINNEA_GREENISH_WHITE_SOURCE = {
   "id": "019732e9-fac2-7ba1-9b48-35975a58164a",
   "name": "Javanese Linnea - Greenish white",
   "slug": "javanese-linnea-greenish-white",
-  "cover": "https://be.satu.love/pictures/picture_1749014791063e9fk1kdf.png",
+  "cover": "/sapatamu-themes/javanese-linnea-greenish-white/original/pictures/picture_1749014791063e9fk1kdf.png",
   "background": "https://be.satu.love/albums/album_1748921819881gj9yif7.jpeg",
   "frames": {
     "style": {

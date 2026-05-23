@@ -5,7 +5,7 @@ export const JAVANESE_MAGNOLIA_TAN_MAHOGANY_SOURCE = {
   "id": "0194f590-efb6-7e73-a4c2-2ece275a9dc1",
   "name": "Javanese magnolia - Tan mahogany",
   "slug": "javanese-magnolia-tan-mahogany",
-  "cover": "https://be.satu.love/pictures/picture_1739341588542rfwkemh.png",
+  "cover": "/sapatamu-themes/javanese-magnolia-tan-mahogany/original/pictures/picture_1739341588542rfwkemh.png",
   "background": "https://be.satu.love/pictures/picture_1696478410016ttebdfn.png",
   "frames": {
     "style": {

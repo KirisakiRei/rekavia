@@ -7,6 +7,7 @@ import {
   buildEditorPackageFeatures,
   buildLayoutCatalog,
   createPageFromLayoutCode,
+  normalizeEditorState,
   normalizeEditorPageSlug,
 } from './sapatamu-editor.helper';
 import { buildContentForThemeSwitch, buildContentFromDraft, migrateContentJson } from './sapatamu-content.helper';
@@ -374,7 +375,7 @@ describe('sapatamu editor helpers', () => {
     expect(malayTheme).toBeDefined();
     expect(malayTheme?.name).toBe('Malay ethnic - Red ruby');
     expect(malayTheme?.previewImageUrl).toBe(
-      '/sapatamu-themes/malay-ethnic-red-ruby/original/pictures/picture_17393765661722ej1do.jpeg',
+      '/sapatamu-themes/malay-ethnic-red-ruby/original/pictures/picture_17393765661722ej1do.png',
     );
     expect(malayTheme?.metadata).toMatchObject({
       group: 'Budaya',
@@ -389,7 +390,7 @@ describe('sapatamu editor helpers', () => {
     expect(batakTheme).toBeDefined();
     expect(batakTheme?.name).toBe('Batak ethnic - maroon mistyrose');
     expect(batakTheme?.previewImageUrl).toBe(
-      '/sapatamu-themes/batak-ethnic-maroon-mistyrose/original/pictures/picture_1739377539664wswbzef.jpeg',
+      '/sapatamu-themes/batak-ethnic-maroon-mistyrose/original/pictures/picture_1739377539664wswbzef.png',
     );
     expect(batakTheme?.metadata).toMatchObject({
       group: 'Budaya',
@@ -404,7 +405,7 @@ describe('sapatamu editor helpers', () => {
     const byKey = new Map(signatureAssets.map((asset) => [asset.assetKey, asset]));
 
     expect(byKey.get('cover.preview')?.url).toBe(
-      '/sapatamu-themes/malay-ethnic-red-ruby/original/pictures/picture_17393765661722ej1do.jpeg',
+      '/sapatamu-themes/malay-ethnic-red-ruby/original/pictures/picture_17393765661722ej1do.png',
     );
     expect(byKey.get('background.global')?.url).toBe(
       '/sapatamu-themes/malay-ethnic-red-ruby/original/pictures/picture_17044658190466dpttoc.jpeg',
@@ -427,7 +428,7 @@ describe('sapatamu editor helpers', () => {
     const byKey = new Map(batakAssets.map((asset) => [asset.assetKey, asset]));
 
     expect(byKey.get('cover.preview')?.url).toBe(
-      '/sapatamu-themes/batak-ethnic-maroon-mistyrose/original/pictures/picture_1739377539664wswbzef.jpeg',
+      '/sapatamu-themes/batak-ethnic-maroon-mistyrose/original/pictures/picture_1739377539664wswbzef.png',
     );
     expect(byKey.get('background.global')?.url).toBe(
       '/sapatamu-themes/batak-ethnic-maroon-mistyrose/original/pictures/picture_170778647164894xcmz8.jpeg',
@@ -742,6 +743,45 @@ describe('sapatamu editor helpers', () => {
       expect(editor.globalBackground ?? '').not.toContain('https://');
       expect(editor.globalBackground).toContain(`/sapatamu-themes/${themeId}/original/`);
     });
+  });
+
+  it('localizes legacy be.satu.love source theme cover URLs during editor normalization', () => {
+    const editor = buildDefaultEditorState({
+      themeId: 'calla-lily-plum-red-lead',
+      requiredTierCategory: 'premium',
+      profiles,
+      events,
+    });
+    const opening = editor.pages.find((page) => page.family === 'opening');
+
+    expect(opening).toBeDefined();
+    (opening!.data.image as { content: string }).content =
+      'https://be.satu.love/pictures/picture_1739338788188xkqpvsi.jpeg';
+    opening!.data.background = 'https://be.satu.love/pictures/picture_1739338788188xkqpvsi.jpeg';
+    editor.globalBackground = 'https://be.satu.love/pictures/picture_1739338788188xkqpvsi.jpeg';
+    editor.cornerElements.list[0].url = 'https://be.satu.love/pictures/picture_1739338788188xkqpvsi.jpeg';
+
+    const normalized = normalizeEditorState({
+      themeId: 'calla-lily-plum-red-lead',
+      requiredTierCategory: 'premium',
+      profiles,
+      events,
+      raw: editor,
+    });
+    const normalizedOpening = normalized.pages.find((page) => page.family === 'opening');
+
+    expect((normalizedOpening!.data.image as { content: string }).content).toBe(
+      '/sapatamu-themes/calla-lily-plum-red-lead/original/pictures/picture_1739338788188xkqpvsi.png',
+    );
+    expect(normalizedOpening!.data.background).toBe(
+      '/sapatamu-themes/calla-lily-plum-red-lead/original/pictures/picture_1739338788188xkqpvsi.png',
+    );
+    expect(normalized.globalBackground).toBe(
+      '/sapatamu-themes/calla-lily-plum-red-lead/original/pictures/picture_1739338788188xkqpvsi.png',
+    );
+    expect(normalized.cornerElements.list[0].url).toBe(
+      '/sapatamu-themes/calla-lily-plum-red-lead/original/pictures/picture_1739338788188xkqpvsi.png',
+    );
   });
 
   it('registers aishwarya-peonny as a Signature dedicated renderer theme', () => {

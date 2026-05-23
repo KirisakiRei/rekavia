@@ -985,10 +985,37 @@ function sourceThemeOriginalAsset(definition: SourceThemeDefinition, source: unk
 
   try {
     const parsed = new URL(url);
+    const coverPath = sourceThemeOriginalPath(definition.source.cover, definition);
+    if (coverPath) {
+      const sourceStem = parsed.pathname.replace(/\.[^/.]+$/, '');
+      const coverStem = coverPath.replace(/\.[^/.]+$/, '');
+      if (sourceStem === coverStem) {
+        return `${definition.assetBase}/original${coverPath}`;
+      }
+    }
     return `${definition.assetBase}/original${parsed.pathname}`;
   } catch {
     return url;
   }
+}
+
+function sourceThemeOriginalPath(source: unknown, definition: SourceThemeDefinition): string {
+  const url = cleanString(source);
+  if (!url) return '';
+  if (url.startsWith('https://be.satu.love/')) {
+    try {
+      return new URL(url).pathname;
+    } catch {
+      return '';
+    }
+  }
+
+  const originalPrefix = `${definition.assetBase}/original`;
+  if (url.startsWith(`${originalPrefix}/`)) {
+    return url.slice(originalPrefix.length);
+  }
+
+  return '';
 }
 
 function sourceThemeCoverAsset(definition: SourceThemeDefinition): string {
@@ -2749,7 +2776,8 @@ export function normalizeEditorState(params: {
 
   const raw = params.raw ?? {};
   const isMalayEthnicRedRuby = params.themeId === MALAY_ETHNIC_RED_RUBY_THEME_ID;
-  const isSourceTheme = Boolean(getSourceThemeDefinition(params.themeId));
+  const sourceDefinition = getSourceThemeDefinition(params.themeId);
+  const isSourceTheme = Boolean(sourceDefinition);
   const catalog = buildLayoutCatalog({
     themeId: params.themeId,
     profiles: params.profiles,
@@ -2765,6 +2793,7 @@ export function normalizeEditorState(params: {
             catalog[0];
           const uniqueId = typeof item.uniqueId === 'number' ? item.uniqueId : index + 1;
           const title = isSourceTheme ? layout.title : cleanString(item.title) || layout.title;
+          const pageData = sourceDefinition ? localizeSourceThemeValue(sourceDefinition, item.data) : item.data;
           return {
             id: cleanString(item.id) || layout.layoutCode,
             uniqueId,
@@ -2775,7 +2804,7 @@ export function normalizeEditorState(params: {
             isActive: typeof item.isActive === 'boolean' ? item.isActive : true,
             isLocked: isLayoutLocked(layout, packageFeatures),
             source: item.source === 'addon' ? 'addon' : 'base',
-            data: normalizePageData(item.data, layout.defaultPageData as SapatamuEditorPage['data'], {
+            data: normalizePageData(pageData, layout.defaultPageData as SapatamuEditorPage['data'], {
               pruneUnknownKeys: isSourceTheme,
               resetSignatureSourceAssets: isMalayEthnicRedRuby,
             }),
@@ -2789,7 +2818,16 @@ export function normalizeEditorState(params: {
         packageFeatures,
       })
     : normalizedPages;
-  const rawGlobalBackground = typeof raw.globalBackground === 'string' ? raw.globalBackground : '';
+  const rawGlobalBackground =
+    typeof raw.globalBackground === 'string' && sourceDefinition
+      ? sourceThemeOriginalAsset(sourceDefinition, raw.globalBackground)
+      : typeof raw.globalBackground === 'string'
+        ? raw.globalBackground
+        : '';
+  const rawCornerElements =
+    raw.cornerElements && typeof raw.cornerElements === 'object' && sourceDefinition
+      ? localizeSourceThemeValue(sourceDefinition, raw.cornerElements)
+      : raw.cornerElements;
   const resetGlobalSignatureSourceAssets = isMalayEthnicRedRuby && isSignatureSourceAsset(rawGlobalBackground);
 
   return {
@@ -2811,24 +2849,24 @@ export function normalizeEditorState(params: {
           }
         : fallback.globalBackgroundDetails,
     cornerElements:
-      raw.cornerElements &&
-      typeof raw.cornerElements === 'object' &&
-      !(isMalayEthnicRedRuby && containsSignatureSourceAsset(raw.cornerElements))
+      rawCornerElements &&
+      typeof rawCornerElements === 'object' &&
+      !(isMalayEthnicRedRuby && containsSignatureSourceAsset(rawCornerElements))
         ? {
             ...fallback.cornerElements,
-            ...(raw.cornerElements as JsonRecord),
+            ...(rawCornerElements as JsonRecord),
             style: {
               ...fallback.cornerElements.style,
-              ...((raw.cornerElements as JsonRecord).style as JsonRecord | undefined),
+              ...((rawCornerElements as JsonRecord).style as JsonRecord | undefined),
               gradient: {
                 ...fallback.cornerElements.style.gradient,
-                ...(((raw.cornerElements as JsonRecord).style as JsonRecord | undefined)?.gradient as
+                ...(((rawCornerElements as JsonRecord).style as JsonRecord | undefined)?.gradient as
                   | JsonRecord
                   | undefined),
               },
               blend: {
                 ...fallback.cornerElements.style.blend,
-                ...(((raw.cornerElements as JsonRecord).style as JsonRecord | undefined)?.blend as
+                ...(((rawCornerElements as JsonRecord).style as JsonRecord | undefined)?.blend as
                   | JsonRecord
                   | undefined),
               },
