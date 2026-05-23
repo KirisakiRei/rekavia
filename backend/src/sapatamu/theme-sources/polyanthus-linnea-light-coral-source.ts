@@ -5,7 +5,7 @@ export const POLYANTHUS_LINNEA_LIGHT_CORAL_SOURCE = {
   "id": "0194f590-efc3-7b60-8aa6-ead1cfda12a4",
   "name": "Polyanthus Linnea - Light coral",
   "slug": "polyanthus-linnea-light-coral",
-  "cover": "https://be.satu.love/pictures/picture_1739341758292juehtaq.jpeg",
+  "cover": "https://be.satu.love/pictures/picture_1739341758292juehtaq.png",
   "background": "https://be.satu.love/pictures/picture_17198225356117kk67vmf.jpeg",
   "frames": {
     "style": {

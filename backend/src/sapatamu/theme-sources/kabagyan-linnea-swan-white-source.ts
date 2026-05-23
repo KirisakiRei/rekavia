@@ -5,7 +5,7 @@ export const KABAGYAN_LINNEA_SWAN_WHITE_SOURCE = {
   "id": "0199bc9d-035e-74b0-aab4-6705e3b0c9d8",
   "name": "Kabagyan Linnea - Swan white",
   "slug": "kabagyan-linnea-swan-white",
-  "cover": "https://be.satu.love/pictures/picture_17598873167628sxuxvc.jpeg",
+  "cover": "https://be.satu.love/pictures/picture_17598873167628sxuxvc.png",
   "background": "#ffffff",
   "frames": {
     "style": {

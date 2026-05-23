@@ -5,7 +5,7 @@ export const HOLLYHOCK_NAULI_SIENNA_IVORY_SOURCE = {
   "id": "019c5aeb-4e9e-71c3-897d-46e5d69a2946",
   "name": "Hollyhock Nauli - Sienna ivory",
   "slug": "hollyhock-nauli-sienna-ivory",
-  "cover": "https://be.satu.love/pictures/picture_1771210484572u3md4sr.jpeg",
+  "cover": "https://be.satu.love/pictures/picture_1771210484572u3md4sr.png",
   "background": "#ffffff",
   "frames": {
     "style": {
