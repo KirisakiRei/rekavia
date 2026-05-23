@@ -2552,7 +2552,7 @@ export const ADDITIONAL_SOURCE_THEME_CATALOG_SEEDS = [
     "code": "cheerfulness-floralwhite",
     "name": "Cheerfulness - floralwhite",
     "description": "Tema luxury Cheerfulness bernuansa floralwhite.",
-    "previewImageUrl": "/sapatamu-themes/cheerfulness-floralwhite/original/pictures/picture_17393762970235qag6qp.jpeg",
+    "previewImageUrl": "/sapatamu-themes/cheerfulness-floralwhite/original/pictures/picture_17393762970235qag6qp.png",
     "metadata": {
       "group": "Budaya",
       "tierCategory": "premium",
@@ -2564,7 +2564,7 @@ export const ADDITIONAL_SOURCE_THEME_CATALOG_SEEDS = [
     "code": "javanese-magnolia-tan-mahogany",
     "name": "Javanese magnolia - Tan mahogany",
     "description": "Tema luxury Javanese magnolia bernuansa tan mahogany.",
-    "previewImageUrl": "/sapatamu-themes/javanese-magnolia-tan-mahogany/original/pictures/picture_1739341588542rfwkemh.jpeg",
+    "previewImageUrl": "/sapatamu-themes/javanese-magnolia-tan-mahogany/original/pictures/picture_1739341588542rfwkemh.png",
     "metadata": {
       "group": "Budaya",
       "tierCategory": "premium",
@@ -2576,7 +2576,7 @@ export const ADDITIONAL_SOURCE_THEME_CATALOG_SEEDS = [
     "code": "kabagyan-linnea-swan-white",
     "name": "Kabagyan Linnea - Swan white",
     "description": "Tema luxury Kabagyan Linnea bernuansa swan white.",
-    "previewImageUrl": "/sapatamu-themes/kabagyan-linnea-swan-white/original/pictures/picture_17598873167628sxuxvc.jpeg",
+    "previewImageUrl": "/sapatamu-themes/kabagyan-linnea-swan-white/original/pictures/picture_17598873167628sxuxvc.png",
     "metadata": {
       "group": "Budaya",
       "tierCategory": "premium",
@@ -2588,7 +2588,7 @@ export const ADDITIONAL_SOURCE_THEME_CATALOG_SEEDS = [
     "code": "javanese-linnea-greenish-white",
     "name": "Javanese Linnea - Greenish white",
     "description": "Tema luxury Javanese Linnea bernuansa greenish white.",
-    "previewImageUrl": "/sapatamu-themes/javanese-linnea-greenish-white/original/pictures/picture_1749014791063e9fk1kdf.jpeg",
+    "previewImageUrl": "/sapatamu-themes/javanese-linnea-greenish-white/original/pictures/picture_1749014791063e9fk1kdf.png",
     "metadata": {
       "group": "Budaya",
       "tierCategory": "premium",
@@ -2600,7 +2600,7 @@ export const ADDITIONAL_SOURCE_THEME_CATALOG_SEEDS = [
     "code": "polyanthus-linnea-light-coral",
     "name": "Polyanthus Linnea - Light coral",
     "description": "Tema luxury Polyanthus Linnea bernuansa light coral.",
-    "previewImageUrl": "/sapatamu-themes/polyanthus-linnea-light-coral/original/pictures/picture_1739341758292juehtaq.jpeg",
+    "previewImageUrl": "/sapatamu-themes/polyanthus-linnea-light-coral/original/pictures/picture_1739341758292juehtaq.png",
     "metadata": {
       "group": "Budaya",
       "tierCategory": "premium",
@@ -2612,7 +2612,7 @@ export const ADDITIONAL_SOURCE_THEME_CATALOG_SEEDS = [
     "code": "hollyhock-nauli-sienna-ivory",
     "name": "Hollyhock Nauli - Sienna ivory",
     "description": "Tema luxury Hollyhock Nauli bernuansa sienna ivory.",
-    "previewImageUrl": "/sapatamu-themes/hollyhock-nauli-sienna-ivory/original/pictures/picture_1771210484572u3md4sr.jpeg",
+    "previewImageUrl": "/sapatamu-themes/hollyhock-nauli-sienna-ivory/original/pictures/picture_1771210484572u3md4sr.png",
     "metadata": {
       "group": "Budaya",
       "tierCategory": "premium",
@@ -2624,7 +2624,7 @@ export const ADDITIONAL_SOURCE_THEME_CATALOG_SEEDS = [
     "code": "honeysuckle-seashell",
     "name": "Honeysuckle - seashell",
     "description": "Tema luxury Honeysuckle bernuansa seashell.",
-    "previewImageUrl": "/sapatamu-themes/honeysuckle-seashell/original/pictures/picture_173937383935637doz57.jpeg",
+    "previewImageUrl": "/sapatamu-themes/honeysuckle-seashell/original/pictures/picture_173937383935637doz57.png",
     "metadata": {
       "group": "Budaya",
       "tierCategory": "premium",
@@ -2636,7 +2636,7 @@ export const ADDITIONAL_SOURCE_THEME_CATALOG_SEEDS = [
     "code": "calla-lily-plum-red-lead",
     "name": "Calla Lily Plum - Red lead",
     "description": "Tema luxury Calla Lily Plum bernuansa red lead.",
-    "previewImageUrl": "/sapatamu-themes/calla-lily-plum-red-lead/original/pictures/picture_1739338788188xkqpvsi.jpeg",
+    "previewImageUrl": "/sapatamu-themes/calla-lily-plum-red-lead/original/pictures/picture_1739338788188xkqpvsi.png",
     "metadata": {
       "group": "Budaya",
       "tierCategory": "premium",
@@ -3419,8 +3419,8 @@ export const ADDITIONAL_SOURCE_THEME_ASSET_SEEDS = [
     "templateCode": "polyanthus-linnea-light-coral",
     "assetType": "preview",
     "assetKey": "cover.preview",
-    "url": "/sapatamu-themes/polyanthus-linnea-light-coral/original/pictures/picture_1739341758292juehtaq.jpeg",
-    "fileName": "picture_1739341758292juehtaq.jpeg",
+    "url": "/sapatamu-themes/polyanthus-linnea-light-coral/original/pictures/picture_1739341758292juehtaq.png",
+    "fileName": "picture_1739341758292juehtaq.png",
     "sortOrder": 1,
     "metadata": {
       "slot": "cover",
@@ -3431,8 +3431,8 @@ export const ADDITIONAL_SOURCE_THEME_ASSET_SEEDS = [
     "templateCode": "polyanthus-linnea-light-coral",
     "assetType": "background",
     "assetKey": "background.global",
-    "url": "/sapatamu-themes/polyanthus-linnea-light-coral/original/pictures/picture_17198225356117kk67vmf.jpeg",
-    "fileName": "picture_17198225356117kk67vmf.jpeg",
+    "url": "/sapatamu-themes/polyanthus-linnea-light-coral/original/pictures/picture_17198225356117kk67vmf.png",
+    "fileName": "picture_17198225356117kk67vmf.png",
     "sortOrder": 10,
     "metadata": {
       "slot": "global",
