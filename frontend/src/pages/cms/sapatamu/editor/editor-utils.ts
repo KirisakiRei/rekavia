@@ -329,6 +329,14 @@ const CONTENT_KEYS = new Set([
   'address',   // alamat gift
 ])
 
+function isGiftActionDefaultElement(element: Record<string, unknown>) {
+  return (
+    (element.type === 'button' || element.type === 'url') &&
+    typeof element.link === 'string' &&
+    element.link.startsWith('gift:')
+  )
+}
+
 /**
  * Reset page data ke default admin, tapi pertahankan konten yang sudah diisi user.
  * Digunakan oleh tombol "Set to Default" di editor user.
@@ -361,8 +369,10 @@ export function resetPageDataToDefault(
 
     // Elemen ada di default — mulai dari default, lalu copy content keys dari user
     const nextElement = cloneJson(defaultElement) as Record<string, unknown>
+    const shouldUseDefaultGiftAction = isGiftActionDefaultElement(defaultElement)
 
     CONTENT_KEYS.forEach((contentKey) => {
+      if (shouldUseDefaultGiftAction && (contentKey === 'content' || contentKey === 'link')) return
       if (contentKey in currentElement) {
         const userValue = currentElement[contentKey]
         // Hanya pertahankan jika user sudah mengisi (bukan string kosong / null / undefined)

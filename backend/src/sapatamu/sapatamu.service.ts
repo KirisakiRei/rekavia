@@ -159,6 +159,14 @@ function mergeEditorElementDataWithDefaults(
     Object.entries(currentRecord).forEach(([key, value]) => {
       next[key] = mergeEditorElementDataWithDefaults(next[key], value);
     });
+    if (
+      (defaultRecord.type === 'button' || defaultRecord.type === 'url') &&
+      (currentRecord.type === 'button' || currentRecord.type === 'url') &&
+      !cleanString(next.link) &&
+      cleanString(defaultRecord.link)
+    ) {
+      next.link = cleanString(defaultRecord.link);
+    }
     return next;
   }
 

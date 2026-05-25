@@ -745,6 +745,29 @@ describe('sapatamu editor helpers', () => {
     });
   });
 
+  it('assigns stable gift action links for every source theme gift button', () => {
+    const themeIds = [
+      'malay-ethnic-red-ruby',
+      'batak-ethnic-maroon-mistyrose',
+      ...Object.keys(ADDITIONAL_SOURCE_THEME_DEFINITIONS),
+    ];
+
+    themeIds.forEach((themeId) => {
+      const catalog = buildLayoutCatalog({ themeId, profiles, events });
+      const giftLayout = catalog.find((layout) => layout.family === 'gift');
+
+      expect(giftLayout).toBeDefined();
+      const button1 = giftLayout?.defaultPageData.button1 as { link?: string } | undefined;
+      const button2 = giftLayout?.defaultPageData.button2 as { link?: string } | undefined;
+      const button = giftLayout?.defaultPageData.button as { link?: string } | undefined;
+
+      expect(button1?.link ?? button?.link).toBe('gift:angpao');
+      if (button2) {
+        expect(button2.link).toBe('gift:kado');
+      }
+    });
+  });
+
   it('localizes legacy be.satu.love source theme cover URLs during editor normalization', () => {
     const editor = buildDefaultEditorState({
       themeId: 'calla-lily-plum-red-lead',

@@ -33,6 +33,15 @@ jest.mock(
   { virtual: true },
 );
 
+jest.mock(
+  'src/payments/pakasir.service',
+  () => ({
+    isPakasirMethod: jest.fn(),
+    PakasirService: class PakasirService {},
+  }),
+  { virtual: true },
+);
+
 import {
   SapatamuService,
   buildThemeAddonCartItems,
@@ -77,7 +86,7 @@ describe('SapatamuService template asset application', () => {
     expect(openingImage.frame.disabled).toBe(true);
     expect(framedImage).toBeDefined();
 
-    const service = new SapatamuService({} as never) as unknown as {
+    const service = new SapatamuService({} as never, {} as never) as unknown as {
       applyFrameAsset: (document: SapatamuEditorDocumentV3, url: string, enabled: boolean) => void;
     };
     service.applyFrameAsset(content, '/sapatamu-themes/malay-ethnic-red-ruby/original/library/replacement-frame.png', true);
@@ -238,6 +247,34 @@ describe('SapatamuService template editor defaults', () => {
     });
   });
 
+  it('fills an empty user button link from template defaults without replacing custom label', () => {
+    const merged = mergeEditorPageDataWithDefaults(
+      ({
+        button1: {
+          type: 'button',
+          content: 'Kirim Amplop',
+          link: '',
+          size: 42,
+        },
+      } as unknown as SapatamuEditorDocumentV3['editor']['pages'][number]['data']),
+      {
+        button1: {
+          type: 'button',
+          content: 'Kirim Angpao',
+          link: 'gift:angpao',
+          size: 12,
+        },
+      },
+    );
+
+    expect(merged.button1).toEqual({
+      type: 'button',
+      content: 'Kirim Amplop',
+      link: 'gift:angpao',
+      size: 42,
+    });
+  });
+
   it('prefers template-scoped layout defaults over global layout defaults', async () => {
     const db = {
       editorLayoutTemplate: {
@@ -274,7 +311,7 @@ describe('SapatamuService template editor defaults', () => {
       },
     };
 
-    const service = new SapatamuService(db as never) as unknown as {
+    const service = new SapatamuService(db as never, {} as never) as unknown as {
       buildEditorLayoutCatalogFromDb: (params: {
         themeId: string;
         templateId: string;
@@ -319,7 +356,7 @@ describe('SapatamuService template editor defaults', () => {
       },
     };
 
-    const service = new SapatamuService(db as never) as unknown as {
+    const service = new SapatamuService(db as never, {} as never) as unknown as {
       buildEditorLayoutCatalogFromDb: (params: {
         themeId: string;
         templateId: string;

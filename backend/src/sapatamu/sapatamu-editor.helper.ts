@@ -1324,6 +1324,26 @@ function sourceBaseButton(
   };
 }
 
+function applySourceThemeGiftButtonActions(data: Record<string, unknown>, sourceLayout: JsonRecord) {
+  const isGiftLayout = cleanString(sourceLayout.name).toLowerCase().includes('gift') || Boolean(data.gift);
+  if (!isGiftLayout) return;
+
+  const giftButtonActions: Record<string, string> = {
+    button1: 'gift:angpao',
+    button2: 'gift:kado',
+  };
+
+  Object.entries(giftButtonActions).forEach(([key, action]) => {
+    const element = data[key];
+    if (!element || typeof element !== 'object' || Array.isArray(element)) return;
+    const record = element as JsonRecord;
+    if (record.type !== 'button' && record.type !== 'url') return;
+    if (!cleanString(record.link)) {
+      record.link = action;
+    }
+  });
+}
+
 function sourceBaseImage(source: JsonRecord, definition: SourceThemeDefinition): SapatamuEditorImageElement {
   const frame = parseJsonObject(source.frame);
   return {
@@ -1552,6 +1572,8 @@ function buildSourceThemePageData(
     const element = mapSourceThemeElement(definition, key, value as JsonRecord);
     if (element) data[key] = element;
   });
+
+  applySourceThemeGiftButtonActions(data, sourceLayout);
 
   return data;
 }
@@ -2702,7 +2724,7 @@ function normalizePageData(
   const shouldResetPageAssets =
     options.resetSignatureSourceAssets &&
     (isSignatureSourceAsset(source.background) || containsSignatureSourceAsset(source.cornerElements));
-  return {
+  const normalized = {
     ...deepClone(fallback),
     ...cleanSource,
     background:
@@ -2751,6 +2773,31 @@ function normalizePageData(
           }
         : fallback.cornerElements,
   };
+
+  Object.entries(fallback).forEach(([key, fallbackValue]) => {
+    const currentValue = (normalized as JsonRecord)[key];
+    if (
+      fallbackValue &&
+      typeof fallbackValue === 'object' &&
+      !Array.isArray(fallbackValue) &&
+      currentValue &&
+      typeof currentValue === 'object' &&
+      !Array.isArray(currentValue)
+    ) {
+      const fallbackRecord = fallbackValue as JsonRecord;
+      const currentRecord = currentValue as JsonRecord;
+      if (
+        (fallbackRecord.type === 'button' || fallbackRecord.type === 'url') &&
+        (currentRecord.type === 'button' || currentRecord.type === 'url') &&
+        !cleanString(currentRecord.link) &&
+        cleanString(fallbackRecord.link)
+      ) {
+        currentRecord.link = cleanString(fallbackRecord.link);
+      }
+    }
+  });
+
+  return normalized;
 }
 
 export function normalizeEditorState(params: {
