@@ -184,6 +184,30 @@ describe('sapatamu editor helpers', () => {
     ).toEqual(['gallery-mosaic-six', 'gallery-quad-offset', 'gallery-hero-trio']);
   });
 
+  it('seeds gallery frame settings for every supported variant', () => {
+    const editor = buildDefaultEditorState({
+      themeId: 'gallery',
+      requiredTierCategory: 'premium',
+      profiles,
+      events,
+    });
+    const gallery = editor.pages.find((page) => page.family === 'galeri');
+    const frameSettingsByVariant = (gallery?.data.gallery as {
+      frameSettingsByVariant?: Record<string, { columns?: number; rowHeight?: number; gap?: number; slots?: unknown[] }>
+    } | undefined)?.frameSettingsByVariant;
+
+    expect(Object.keys(frameSettingsByVariant ?? {}).sort()).toEqual([
+      'gallery-duo',
+      'gallery-hero-trio',
+      'gallery-mosaic-six',
+      'gallery-quad-grid',
+      'gallery-quad-offset',
+      'gallery-stack',
+    ]);
+    expect(frameSettingsByVariant?.['gallery-quad-offset']?.slots).toHaveLength(4);
+    expect(frameSettingsByVariant?.['gallery-mosaic-six']?.slots).toHaveLength(6);
+  });
+
   it('expands premium source theme gallery layouts into three visible gallery pages', () => {
     const editor = buildDefaultEditorState({
       themeId: 'malay-ethnic-red-ruby',
@@ -214,6 +238,63 @@ describe('sapatamu editor helpers', () => {
       'gallery-quad-offset',
       'gallery-hero-trio',
     ]);
+  });
+
+  it('maps legacy source gallery images into editor gallery items', () => {
+    const editor = buildDefaultEditorState({
+      themeId: 'cheerfulness-floralwhite',
+      requiredTierCategory: 'premium',
+      profiles,
+      events,
+    });
+    const activeGalleryPages = editor.pages.filter((page) => page.family === 'galeri');
+
+    expect(activeGalleryPages.map((page) => (page.data.gallery as { items?: string[] }).items?.length)).toEqual([
+      10,
+      10,
+      10,
+    ]);
+    activeGalleryPages.forEach((page) => {
+      const gallery = page.data.gallery as {
+        items?: string[];
+        frameSettingsByVariant?: Record<string, unknown>;
+      };
+      expect(gallery.items?.[0]).toContain('/sapatamu-themes/cheerfulness-floralwhite/original/');
+      expect(gallery.frameSettingsByVariant?.['gallery-hero-trio']).toBeDefined();
+    });
+  });
+
+  it('preserves uploaded gallery 3 slot items after rebuilding source theme content', () => {
+    const content = buildContentFromDraft({
+      themeId: 'cheerfulness-floralwhite',
+      profiles,
+      events,
+      basePhotoQuota: 15,
+      requiredTierCategory: 'premium',
+    });
+    const gallery3 = content.editor.pages.find((page) => page.layoutCode.endsWith('galeri3'));
+    expect(gallery3).toBeDefined();
+
+    const uploadedItems = ['', '', '/uploads/gallery-3-slot-3.jpg'];
+    const patched = applyEditorPatchOperations(content, [
+      {
+        type: 'set_page_field',
+        uniqueId: gallery3!.uniqueId,
+        path: 'data.gallery.items',
+        value: uploadedItems,
+      },
+    ]);
+    const rebuilt = buildContentFromDraft({
+      themeId: patched.selectedTheme,
+      profiles: patched.profiles,
+      events: patched.events,
+      basePhotoQuota: patched.albumSettings.basePhotoQuota,
+      requiredTierCategory: patched.settings.commerce.requiredTierCategory,
+      existing: patched,
+    });
+    const rebuiltGallery3 = rebuilt.editor.pages.find((page) => page.layoutCode.endsWith('galeri3'));
+
+    expect((rebuiltGallery3?.data.gallery as { items?: string[] }).items).toEqual(uploadedItems);
   });
 
   it('upgrades legacy source theme documents with one unnumbered gallery page into three gallery pages', () => {

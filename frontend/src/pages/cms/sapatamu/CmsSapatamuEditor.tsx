@@ -344,9 +344,10 @@ function SortablePageItem(props: {
   page: SapatamuEditorPage
   isCurrent: boolean
   invitationId: string
+  isSaving: boolean
   onToggle: (page: SapatamuEditorPage, nextActive: boolean) => void
 }) {
-  const { page, isCurrent, invitationId, onToggle } = props
+  const { page, isCurrent, invitationId, isSaving, onToggle } = props
   const navigate = useNavigate()
   const {
     attributes,
@@ -391,6 +392,7 @@ function SortablePageItem(props: {
         </button>
         <Switch
           checked={page.isActive}
+          disabled={isSaving}
           onCheckedChange={(checked) => onToggle(page, checked)}
         />
       </div>
@@ -1016,6 +1018,20 @@ function clampGalleryNumber(value: unknown, min: number, max: number, fallback: 
   const next = typeof value === 'number' ? value : Number(value)
   if (!Number.isFinite(next)) return fallback
   return Math.min(max, Math.max(min, next))
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value))
+}
+
+function buildGalleryVariantFrameSettings(variant: string) {
+  const frameLayout = getGalleryFrameLayout(variant)
+  return {
+    columns: frameLayout.columns,
+    rowHeight: frameLayout.rowHeight,
+    gap: frameLayout.gap,
+    slots: frameLayout.slots.map((slot) => ({ ...slot })),
+  }
 }
 
 function getGalleryGridStyle(element: SapatamuEditorGalleryElement): CSSProperties {
@@ -3716,6 +3732,12 @@ function InspectorGalleryControls(props: {
               )}
               onClick={() => {
                 onPageField(`data.${elementKey}.variant`, variant.id)
+                onPageField(
+                  `data.${elementKey}.frameSettingsByVariant.${variant.id}`,
+                  isPlainRecord(element.frameSettingsByVariant?.[variant.id])
+                    ? element.frameSettingsByVariant?.[variant.id]
+                    : buildGalleryVariantFrameSettings(variant.id),
+                )
                 if (element.items.length > variant.slotCount) {
                   onPageField(`data.${elementKey}.items`, element.items.slice(0, variant.slotCount))
                   onPageField(`data.${elementKey}.imageAdjustments`, imageAdjustments.slice(0, variant.slotCount))
@@ -5204,13 +5226,19 @@ export function CmsSapatamuEditor() {
     if (mediaTarget.kind === 'element-gallery') {
       const currentElement = getEditableElement(page, mediaTarget.elementKey) as SapatamuEditorGalleryElement | null
       const slotCount = getGalleryLayoutVariant(currentElement?.variant).slotCount
-      const nextItems = [...(currentElement?.items ?? [])].slice(0, slotCount)
+      const currentItems = Array.isArray(currentElement?.items) ? currentElement.items : []
+      const nextItems = Array.from({ length: slotCount }, (_, index) => currentItems[index] ?? '')
       if (typeof mediaTarget.slotIndex === 'number') {
-        nextItems[mediaTarget.slotIndex] = mediaUrl
-      } else if (nextItems.length < slotCount) {
-        nextItems.push(mediaUrl)
+        const safeSlotIndex = Math.max(0, Math.min(mediaTarget.slotIndex, slotCount - 1))
+        nextItems[safeSlotIndex] = mediaUrl
+      } else {
+        const emptySlotIndex = nextItems.findIndex((item) => !item)
+        if (emptySlotIndex >= 0) {
+          nextItems[emptySlotIndex] = mediaUrl
+        }
       }
-      updatePageField(mediaTarget.pageUniqueId, `data.${mediaTarget.elementKey}.items`, nextItems)
+      const lastFilledIndex = nextItems.reduce((lastIndex, item, index) => (item ? index : lastIndex), -1)
+      updatePageField(mediaTarget.pageUniqueId, `data.${mediaTarget.elementKey}.items`, nextItems.slice(0, lastFilledIndex + 1))
     }
 
     setMediaDialogOpen(false)
@@ -5389,6 +5417,7 @@ export function CmsSapatamuEditor() {
                   </div>
                   <Switch
                     checked={selectedEditorElement ? !selectedEditorElement.disabled : page.isActive}
+                    disabled={isSaving}
                     onCheckedChange={(checked) => {
                       if (selectedElement && selectedEditorElement) {
                         pageField(`data.${selectedElement}.disabled`, !checked)
@@ -5514,6 +5543,7 @@ export function CmsSapatamuEditor() {
                               key={item.uniqueId}
                               page={item}
                               invitationId={invitationId}
+                              isSaving={isSaving}
                               isCurrent={item.slug === page.slug}
                               onToggle={handleSidebarToggle}
                             />

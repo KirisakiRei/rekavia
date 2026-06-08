@@ -405,6 +405,16 @@ function GalleryFrameInspector(props: {
   )
 }
 
+function buildGalleryVariantFrameSettings(variant: string) {
+  const frameLayout = getGalleryFrameLayout(variant)
+  return {
+    columns: frameLayout.columns,
+    rowHeight: frameLayout.rowHeight,
+    gap: frameLayout.gap,
+    slots: frameLayout.slots.map((slot) => ({ ...slot })),
+  }
+}
+
 function ElementDesignInspector(props: {
   elementKey: string
   element: Record<string, unknown>
@@ -493,7 +503,17 @@ function ElementDesignInspector(props: {
               <select
                 className="mt-2 h-10 w-full rounded-xl border border-border bg-background px-3 text-sm"
                 value={getGalleryLayoutVariant(String(props.element.variant ?? '')).id}
-                onChange={(event) => props.onChange(`${props.elementKey}.variant`, event.target.value)}
+                onChange={(event) => {
+                  const nextVariant = event.target.value
+                  props.onChange(`${props.elementKey}.variant`, nextVariant)
+                  props.onChange(
+                    `${props.elementKey}.frameSettingsByVariant.${nextVariant}`,
+                    isPlainRecord(props.element.frameSettingsByVariant)
+                      && isPlainRecord(props.element.frameSettingsByVariant[nextVariant])
+                      ? props.element.frameSettingsByVariant[nextVariant]
+                      : buildGalleryVariantFrameSettings(nextVariant),
+                  )
+                }}
               >
                 {GALLERY_LAYOUT_VARIANTS.map((variant) => (
                   <option key={variant.id} value={variant.id}>

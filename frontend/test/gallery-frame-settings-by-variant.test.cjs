@@ -14,5 +14,9 @@ const editorSource = fs.readFileSync(
 assert.match(adminSource, /frameSettingsByVariant\.\$\{variant\}/)
 assert.doesNotMatch(adminSource, /props\.onChange\(`\$\{props\.elementKey\}\.frameSettings`/)
 assert.match(editorSource, /getGalleryVariantFrameSettings\(element\.variant, element\.frameSettingsByVariant, element\.frameSettings\)/)
+assert.match(editorSource, /frameSettingsByVariant\.\$\{variant\.id\}/)
+assert.match(editorSource, /Array\.from\(\{\s*length:\s*slotCount\s*\}/)
+assert.match(editorSource, /lastFilledIndex/)
+assert.match(adminSource, /frameSettingsByVariant\.\$\{nextVariant\}/)
 
 console.log('gallery-frame-settings-by-variant tests passed')

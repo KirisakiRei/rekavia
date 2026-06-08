@@ -807,6 +807,89 @@ function buildMap(themeId: string): SapatamuEditorMapElement {
   };
 }
 
+const GALLERY_FRAME_LAYOUT_DEFAULTS = [
+  {
+    id: 'gallery-stack',
+    columns: 6,
+    rowHeight: 64,
+    gap: 8,
+    slots: [{ colStart: 1, rowStart: 1, colSpan: 6, rowSpan: 4 }],
+  },
+  {
+    id: 'gallery-duo',
+    columns: 6,
+    rowHeight: 64,
+    gap: 8,
+    slots: [
+      { colStart: 1, rowStart: 1, colSpan: 6, rowSpan: 2 },
+      { colStart: 1, rowStart: 3, colSpan: 6, rowSpan: 2 },
+    ],
+  },
+  {
+    id: 'gallery-hero-trio',
+    columns: 6,
+    rowHeight: 64,
+    gap: 8,
+    slots: [
+      { colStart: 1, rowStart: 1, colSpan: 6, rowSpan: 2 },
+      { colStart: 1, rowStart: 3, colSpan: 4, rowSpan: 2 },
+      { colStart: 5, rowStart: 3, colSpan: 2, rowSpan: 2 },
+    ],
+  },
+  {
+    id: 'gallery-quad-offset',
+    columns: 6,
+    rowHeight: 64,
+    gap: 8,
+    slots: [
+      { colStart: 1, rowStart: 1, colSpan: 2, rowSpan: 2 },
+      { colStart: 3, rowStart: 1, colSpan: 4, rowSpan: 2 },
+      { colStart: 1, rowStart: 3, colSpan: 4, rowSpan: 2 },
+      { colStart: 5, rowStart: 3, colSpan: 2, rowSpan: 2 },
+    ],
+  },
+  {
+    id: 'gallery-quad-grid',
+    columns: 6,
+    rowHeight: 64,
+    gap: 8,
+    slots: [
+      { colStart: 1, rowStart: 1, colSpan: 3, rowSpan: 2 },
+      { colStart: 4, rowStart: 1, colSpan: 3, rowSpan: 2 },
+      { colStart: 1, rowStart: 3, colSpan: 3, rowSpan: 2 },
+      { colStart: 4, rowStart: 3, colSpan: 3, rowSpan: 2 },
+    ],
+  },
+  {
+    id: 'gallery-mosaic-six',
+    columns: 6,
+    rowHeight: 56,
+    gap: 8,
+    slots: [
+      { colStart: 1, rowStart: 1, colSpan: 4, rowSpan: 2 },
+      { colStart: 5, rowStart: 1, colSpan: 2, rowSpan: 2 },
+      { colStart: 1, rowStart: 3, colSpan: 2, rowSpan: 2 },
+      { colStart: 3, rowStart: 3, colSpan: 4, rowSpan: 2 },
+      { colStart: 1, rowStart: 5, colSpan: 4, rowSpan: 2 },
+      { colStart: 5, rowStart: 5, colSpan: 2, rowSpan: 2 },
+    ],
+  },
+] as const;
+
+function buildGalleryFrameSettingsByVariant(): SapatamuEditorGalleryElement['frameSettingsByVariant'] {
+  return Object.fromEntries(
+    GALLERY_FRAME_LAYOUT_DEFAULTS.map((variant) => [
+      variant.id,
+      {
+        columns: variant.columns,
+        rowHeight: variant.rowHeight,
+        gap: variant.gap,
+        slots: variant.slots.map((slot) => ({ ...slot })),
+      },
+    ]),
+  ) as SapatamuEditorGalleryElement['frameSettingsByVariant'];
+}
+
 function buildGallery(
   themeId: string,
   variant: SapatamuEditorGalleryElement['variant'] = 'gallery-mosaic-six',
@@ -819,6 +902,7 @@ function buildGallery(
     columns: 3,
     variant,
     frameSettings: {},
+    frameSettingsByVariant: buildGalleryFrameSettingsByVariant(),
     imageAdjustments: [],
     padding: buildPadding(12, 12),
     animation: buildAnimation(9, 3),
@@ -1413,6 +1497,8 @@ function sourceBaseLine(source: JsonRecord, definition: SourceThemeDefinition): 
 function sourceBaseGallery(source: JsonRecord, definition: SourceThemeDefinition): SapatamuEditorGalleryElement {
   const items = Array.isArray(source.items)
     ? source.items
+    : Array.isArray(source.images)
+      ? source.images
     : Array.isArray(source.content)
       ? source.content
       : Array.isArray(source.data)
@@ -1429,6 +1515,7 @@ function sourceBaseGallery(source: JsonRecord, definition: SourceThemeDefinition
     columns: toFiniteNumber(source.columns, 2),
     variant: 'gallery-mosaic-six',
     frameSettings: {},
+    frameSettingsByVariant: buildGalleryFrameSettingsByVariant(),
     imageAdjustments: [],
     padding: mapSignatureSourcePadding(parseJsonObject(source.padding)),
     animation: mapSignatureSourceAnimation(parseJsonObject(source.animation)),
