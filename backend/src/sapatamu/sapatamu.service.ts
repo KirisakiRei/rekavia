@@ -71,6 +71,10 @@ import {
   PakasirWebhookPayload,
   type PakasirMethod,
 } from 'src/payments/pakasir.service';
+import {
+  generateImageVariants,
+  mergeImageVariantMetadata,
+} from './sapatamu-image-variants.helper';
 
 type AuthRequestUser = {
   accountId: string;
@@ -224,6 +228,16 @@ function toUploadUrl(filePath: string): string {
 
 function generateCheckoutToken(): string {
   return `rek-${Date.now()}-${randomBytes(6).toString('hex')}`;
+}
+
+async function generateImageVariantsSafely(
+  filePath: string,
+): Promise<Record<string, unknown> | null> {
+  try {
+    return (await generateImageVariants(filePath)) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
 }
 
 function buildGuestKey(name: string): string {
@@ -1711,6 +1725,7 @@ export class SapatamuService {
           url: item.url,
           fileName: item.file_name,
           sortOrder: item.sort_order,
+          metadata: parseJsonObject(item.metadata),
           mediaType:
             item.media_type === InvitationMediaType.video
               ? 'video'
@@ -4187,6 +4202,14 @@ export class SapatamuService {
       detectedType.mime.toLowerCase() === 'video/mp4'
         ? InvitationMediaType.video
         : InvitationMediaType.image;
+    const baseMetadata = {
+      ext: extension.replace('.', '').toLowerCase(),
+      size: file.size,
+      mime: detectedType.mime.toLowerCase(),
+    };
+    const imageVariants = mediaType === InvitationMediaType.image
+      ? await generateImageVariantsSafely(targetPath)
+      : null;
     const currentMedia = await this.db.invitationMedia.findMany({
       where: {
         invitation_id: invitation.id,
@@ -4201,11 +4224,9 @@ export class SapatamuService {
         url: toUploadUrl(targetPath),
         file_name: file.originalname,
         sort_order: currentMedia.length,
-        metadata: {
-          ext: extension.replace('.', '').toLowerCase(),
-          size: file.size,
-          mime: detectedType.mime.toLowerCase(),
-        },
+        metadata: (imageVariants
+          ? mergeImageVariantMetadata(baseMetadata, imageVariants)
+          : baseMetadata) as Prisma.InputJsonValue,
       },
     });
 
@@ -4562,6 +4583,11 @@ export class SapatamuService {
     const targetPath = join(albumFolder, targetFileName);
     fs.mkdirSync(albumFolder, { recursive: true });
     fs.renameSync(file.path, targetPath);
+    const baseMetadata = {
+      ext: extension.replace('.', '').toLowerCase(),
+      size: file.size,
+    };
+    const imageVariants = await generateImageVariantsSafely(targetPath);
 
     await this.db.invitationMedia.create({
       data: {
@@ -4570,10 +4596,9 @@ export class SapatamuService {
         url: toUploadUrl(targetPath),
         file_name: file.originalname,
         sort_order: workspace.album.usedPhotoQuota,
-        metadata: {
-          ext: extension.replace('.', '').toLowerCase(),
-          size: file.size,
-        },
+        metadata: (imageVariants
+          ? mergeImageVariantMetadata(baseMetadata, imageVariants)
+          : baseMetadata) as Prisma.InputJsonValue,
       },
     });
 

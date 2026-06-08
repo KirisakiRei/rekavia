@@ -1076,11 +1076,15 @@ function EditorGalleryPreview(props: {
   fallbackImages: string[]
   onOpenLightbox: (index: number, items?: string[]) => void
   isEditing: boolean
+  resolveGalleryImageUrl?: (url: string, usage: 'thumbnail' | 'lightbox') => string
 }) {
-  const { page, elementKey, element, selectedElement, invitationId, onOpenLightbox, isEditing } = props
+  const { page, elementKey, element, selectedElement, invitationId, onOpenLightbox, isEditing, resolveGalleryImageUrl } = props
   const layoutVariant = getGalleryLayoutVariant(element.variant)
   const filledItems = compactGalleryItems(element.items, layoutVariant.slotCount)
   const slots = isEditing ? Array.from({ length: layoutVariant.slotCount }, (_, index) => filledItems[index] ?? '') : filledItems
+  const lightboxItems = resolveGalleryImageUrl
+    ? filledItems.map((item) => resolveGalleryImageUrl(item, 'lightbox'))
+    : filledItems
 
   return (
     <EditorElementFrame
@@ -1105,11 +1109,11 @@ function EditorGalleryPreview(props: {
               onClick={(event) => {
                 event.stopPropagation()
                 const lightboxIndex = slots.slice(0, index + 1).filter(Boolean).length - 1
-                onOpenLightbox(Math.max(0, lightboxIndex), filledItems)
+                onOpenLightbox(Math.max(0, lightboxIndex), lightboxItems)
               }}
             >
               <img
-                src={resolveApiAssetUrl(item)}
+                src={resolveApiAssetUrl(resolveGalleryImageUrl ? resolveGalleryImageUrl(item, 'thumbnail') : item)}
                 alt={`Gallery ${index + 1}`}
                 loading={isEditing ? 'eager' : 'lazy'}
                 decoding="async"
@@ -1769,6 +1773,7 @@ export function PreviewPage(props: {
   isMusicPlaying?: boolean
   onMusicToggle?: () => void
   onVintageNavigate?: (target: string) => void
+  resolveGalleryImageUrl?: (url: string, usage: 'thumbnail' | 'lightbox') => string
 }) {
   const {
     page,
@@ -1791,6 +1796,7 @@ export function PreviewPage(props: {
     isMusicPlaying = false,
     onMusicToggle,
     onVintageNavigate,
+    resolveGalleryImageUrl,
   } = props
   const themeId = documentValue?.editor.colorPalette.themeId
   const isSourceTheme = isSourceThemePreview(themeId, page.layoutCode)
@@ -1961,6 +1967,7 @@ export function PreviewPage(props: {
                   fallbackImages={fallbackImages}
                   onOpenLightbox={onOpenLightbox}
                   isEditing={isEditing}
+                  resolveGalleryImageUrl={resolveGalleryImageUrl}
                 />
               )
             case 'video':

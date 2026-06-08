@@ -208,10 +208,22 @@ type InvitationContentRow = {
   }
 }
 
+type ImageVariantKey = 'thumb' | 'medium' | 'large'
+
+type InvitationMediaVariant = {
+  url?: string
+  width?: number
+  format?: string
+  size?: number
+}
+
 type InvitationMediaRow = {
   id: string
   url: string
   sort_order: number
+  metadata?: {
+    variants?: Partial<Record<ImageVariantKey, InvitationMediaVariant>>
+  } & Record<string, unknown>
 }
 
 type InvitationGreetingRow = {
@@ -295,6 +307,28 @@ function isLightColor(color: string | null | undefined) {
 
 function navIconFilterForBackground(color: string | null | undefined) {
   return isLightColor(color) ? 'brightness(0) saturate(100%)' : 'brightness(0) invert(1)'
+}
+
+function normalizeUploadUrlKey(url: string) {
+  if (!url) return ''
+  if (url.startsWith('/uploads/')) return url
+  try {
+    const parsed = new URL(url)
+    return parsed.pathname.startsWith('/uploads/') ? parsed.pathname : url
+  } catch {
+    return url
+  }
+}
+
+function getMediaVariantUrl(item: InvitationMediaRow, variant: ImageVariantKey) {
+  const variantUrl = item.metadata?.variants?.[variant]?.url
+  return variantUrl || item.url
+}
+
+function resolveGalleryVariantUrl(url: string, media: InvitationMediaRow[], variant: ImageVariantKey) {
+  const key = normalizeUploadUrlKey(url)
+  const match = media.find((item) => normalizeUploadUrlKey(item.url) === key)
+  return match ? getMediaVariantUrl(match, variant) : url
 }
 
 function getEditorPageBackground(page: SapatamuEditorPage | undefined) {
@@ -992,12 +1026,18 @@ export function TenantWeddingPage() {
 
   if (editorDocument && invitationId) {
     const invitationLink = `https://${BRAND.domain}/${slug}`
-    const fallbackImages = gallery.map((item) => item.url)
+    const fallbackImages = gallery.map((item) => resolveGalleryVariantUrl(item.url, gallery, 'medium'))
     const galleryLightboxSlides = galleryLightbox.items.map((item) => ({ src: resolveApiAssetUrl(item) }))
     const openGalleryLightbox = (index: number, items = fallbackImages) => {
       if (!items.length) return
-      setGalleryLightbox({ open: true, index, items })
+      setGalleryLightbox({
+        open: true,
+        index,
+        items: items.map((item) => resolveGalleryVariantUrl(item, gallery, 'large')),
+      })
     }
+    const resolvePublicGalleryImageUrl = (url: string, usage: 'thumbnail' | 'lightbox') =>
+      resolveGalleryVariantUrl(url, gallery, usage === 'lightbox' ? 'large' : 'medium')
     const isSourceThemeDocument = SOURCE_THEME_IDS.has(editorDocument.selectedTheme)
     const isAishwaryaVintageDocument = editorDocument.selectedTheme === 'aishwarya-peonny'
 
@@ -1050,6 +1090,7 @@ export function TenantWeddingPage() {
                         fallbackImages={fallbackImages}
                         onOpenLightbox={openGalleryLightbox}
                         isEditing={false}
+                        resolveGalleryImageUrl={resolvePublicGalleryImageUrl}
                         onOpen={handleOpenInvitation}
                         rsvpInitialName={guestName}
                         rsvpMessages={guestMessages}
@@ -1157,6 +1198,7 @@ export function TenantWeddingPage() {
             fallbackImages={fallbackImages}
             onOpenLightbox={openGalleryLightbox}
             isEditing={false}
+            resolveGalleryImageUrl={resolvePublicGalleryImageUrl}
             onOpen={handleOpenInvitation}
             rsvpInitialName={guestName}
             rsvpMessages={guestMessages}
@@ -1328,7 +1370,13 @@ export function TenantWeddingPage() {
                   item ? (
                     <img
                       key={item.id}
-                      src={resolveApiAssetUrl(item.url)}
+                      src={resolveApiAssetUrl(getMediaVariantUrl(item, 'medium'))}
+                      srcSet={[
+                        `${resolveApiAssetUrl(getMediaVariantUrl(item, 'thumb'))} 480w`,
+                        `${resolveApiAssetUrl(getMediaVariantUrl(item, 'medium'))} 960w`,
+                        `${resolveApiAssetUrl(getMediaVariantUrl(item, 'large'))} 1600w`,
+                      ].join(', ')}
+                      sizes="(max-width: 640px) 50vw, 240px"
                       alt={`Galeri ${index + 1}`}
                       loading="lazy"
                       decoding="async"

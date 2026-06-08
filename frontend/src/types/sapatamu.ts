@@ -771,6 +771,7 @@ export interface SapatamuEditorMediaItem {
   url: string
   fileName: string | null
   sortOrder: number
+  metadata?: Record<string, unknown>
   mediaType: 'image' | 'video'
 }
 
