@@ -2,6 +2,7 @@ import {
   buildImageVariantTargets,
   hasCompleteImageVariants,
   mergeImageVariantMetadata,
+  resolveSharpFactory,
   uploadUrlToLocalPath,
 } from './sapatamu-image-variants.helper';
 import * as fs from 'fs';
@@ -82,5 +83,14 @@ describe('sapatamu image variant helpers', () => {
     }, cwd)).toBe(false);
 
     variantPaths.slice(1).forEach((path) => fs.rmSync(path, { force: true }));
+  });
+
+  it('resolves sharp factory from both cjs and esm-shaped modules', () => {
+    const directFactory = jest.fn();
+    const defaultFactory = jest.fn();
+
+    expect(resolveSharpFactory(directFactory)).toBe(directFactory);
+    expect(resolveSharpFactory({ default: defaultFactory })).toBe(defaultFactory);
+    expect(() => resolveSharpFactory({})).toThrow('Sharp module could not be resolved');
   });
 });

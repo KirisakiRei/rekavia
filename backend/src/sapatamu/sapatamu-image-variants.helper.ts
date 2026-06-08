@@ -35,6 +35,15 @@ type SapatamuImageVariantTarget = SapatamuImageVariantMetadata & {
   quality: number;
 };
 
+type SharpPipeline = {
+  rotate: () => SharpPipeline;
+  resize: (options: { width: number; withoutEnlargement: true }) => SharpPipeline;
+  webp: (options: { quality: number; effort: number }) => SharpPipeline;
+  toFile: (path: string) => Promise<unknown>;
+};
+
+type SharpFactory = (input?: string | Buffer) => SharpPipeline;
+
 function filePathToUploadUrl(filePath: string): string {
   const normalized = filePath.replace(/\\/g, '/');
   const marker = '/uploads/';
@@ -80,10 +89,27 @@ export function buildImageVariantTargets(
   ) as Record<SapatamuImageVariantKey, SapatamuImageVariantTarget>;
 }
 
+export function resolveSharpFactory(moduleValue: unknown): SharpFactory {
+  if (typeof moduleValue === 'function') {
+    return moduleValue as SharpFactory;
+  }
+
+  if (
+    moduleValue &&
+    typeof moduleValue === 'object' &&
+    'default' in moduleValue &&
+    typeof (moduleValue as { default?: unknown }).default === 'function'
+  ) {
+    return (moduleValue as { default: SharpFactory }).default;
+  }
+
+  throw new Error('Sharp module could not be resolved to a callable factory.');
+}
+
 export async function generateImageVariants(sourcePath: string): Promise<SapatamuImageVariantMap> {
   const targets = buildImageVariantTargets(sourcePath);
   const sharpModule = await import('sharp');
-  const sharp = sharpModule.default;
+  const sharp = resolveSharpFactory(sharpModule);
 
   fs.mkdirSync(dirname(targets.thumb.path), { recursive: true });
 
