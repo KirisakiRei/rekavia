@@ -12,7 +12,7 @@ module.exports = {
   apps: [
     {
       name: 'rvtech-backend',
-      script: 'dist/main.js',
+      script: 'dist/src/main.js',
 
       // ── Instance & Cluster ──────────────────────────────────────────────────
       // 'max' = gunakan semua CPU core. Ganti angka jika ingin membatasi.
