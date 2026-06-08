@@ -297,6 +297,48 @@ describe('sapatamu editor helpers', () => {
     expect((rebuiltGallery3?.data.gallery as { items?: string[] }).items).toEqual(uploadedItems);
   });
 
+  it('preserves cheerfulness gallery 3 and gift active toggles after rebuilding content', () => {
+    const content = buildContentFromDraft({
+      themeId: 'cheerfulness-floralwhite',
+      profiles,
+      events,
+      basePhotoQuota: 15,
+      requiredTierCategory: 'premium',
+    });
+    const gallery3 = content.editor.pages.find((page) => page.layoutCode.endsWith('galeri3'));
+    const gift = content.editor.pages.find((page) => page.layoutCode.endsWith('gift1'));
+    expect(gallery3).toBeDefined();
+    expect(gift).toBeDefined();
+
+    const patched = applyEditorPatchOperations(content, [
+      {
+        type: 'set_page_field',
+        uniqueId: gallery3!.uniqueId,
+        path: 'isActive',
+        value: false,
+      },
+      {
+        type: 'set_page_field',
+        uniqueId: gift!.uniqueId,
+        path: 'isActive',
+        value: false,
+      },
+    ]);
+    const rebuilt = buildContentFromDraft({
+      themeId: patched.selectedTheme,
+      profiles: patched.profiles,
+      events: patched.events,
+      basePhotoQuota: patched.albumSettings.basePhotoQuota,
+      requiredTierCategory: patched.settings.commerce.requiredTierCategory,
+      existing: patched,
+    });
+    const rebuiltGallery3 = rebuilt.editor.pages.find((page) => page.layoutCode.endsWith('galeri3'));
+    const rebuiltGift = rebuilt.editor.pages.find((page) => page.layoutCode.endsWith('gift1'));
+
+    expect(rebuiltGallery3?.isActive).toBe(false);
+    expect(rebuiltGift?.isActive).toBe(false);
+  });
+
   it('upgrades legacy source theme documents with one unnumbered gallery page into three gallery pages', () => {
     const legacy = buildContentFromDraft({
       themeId: 'malay-ethnic-red-ruby',

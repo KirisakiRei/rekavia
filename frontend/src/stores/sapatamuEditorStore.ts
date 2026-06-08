@@ -187,6 +187,33 @@ function setResponseState(
   })
 }
 
+function setResponseStatePreservingPending(
+  set: (partial: Partial<SapatamuEditorStore> | ((state: SapatamuEditorStore) => Partial<SapatamuEditorStore>)) => void,
+  payload: SapatamuEditorHydrationResponse,
+) {
+  set((state) => {
+    const queuedOperations = state.pendingOperations
+    let document = payload.document
+    queuedOperations.forEach((operation) => {
+      document = applyLocalOperation(document, operation)
+    })
+
+    return {
+      invitation: payload.invitation,
+      document,
+      catalog: payload.catalog,
+      session: payload.session,
+      currentVersion: payload.currentVersion,
+      pendingOperations: queuedOperations,
+      isLoading: false,
+      isSaving: queuedOperations.length > 0,
+      error: null,
+      lastSavedAt: new Date().toISOString(),
+      previewTheme: null,
+    }
+  })
+}
+
 export const useSapatamuEditorStore = create<SapatamuEditorStore>((set, get) => ({
   invitation: null,
   document: null,
@@ -261,59 +288,49 @@ export const useSapatamuEditorStore = create<SapatamuEditorStore>((set, get) => 
     })
   },
   flushPending: async (invitationId) => {
-    const { pendingOperations, currentVersion } = get()
-    if (pendingOperations.length === 0) return
-    if (activeFlushPromise) return activeFlushPromise
+    if (activeFlushPromise) {
+      await activeFlushPromise
+      if (get().pendingOperations.length === 0) return
+    }
 
-    const operationsToSave = [...pendingOperations]
-    set((state) => ({
-      isSaving: true,
-      error: null,
-      pendingOperations: state.pendingOperations.slice(operationsToSave.length),
-    }))
+    if (get().pendingOperations.length === 0) return
 
     activeFlushPromise = (async () => {
-      const response = await sapatamuPatchEditorDocument<SapatamuEditorHydrationResponse>(invitationId, {
-        baseVersion: currentVersion,
-        operations: operationsToSave,
-      })
+      while (get().pendingOperations.length > 0) {
+        const { pendingOperations, currentVersion } = get()
+        const operationsToSave = [...pendingOperations]
+        set((state) => ({
+          isSaving: true,
+          error: null,
+          pendingOperations: state.pendingOperations.slice(operationsToSave.length),
+        }))
 
-      if (!response.data) {
-        throw new Error('Response editor kosong setelah save.')
+        try {
+          const response = await sapatamuPatchEditorDocument<SapatamuEditorHydrationResponse>(invitationId, {
+            baseVersion: currentVersion,
+            operations: operationsToSave,
+          })
+
+          if (!response.data) {
+            throw new Error('Response editor kosong setelah save.')
+          }
+
+          setResponseStatePreservingPending(set, response.data)
+        } catch (error) {
+          set((state) => ({
+            isSaving: false,
+            error: getPublicErrorMessage(error, 'Perubahan editor belum bisa disimpan.'),
+            pendingOperations: [...operationsToSave, ...state.pendingOperations],
+          }))
+          throw error
+        }
       }
 
-      set((state) => {
-        const queuedOperations = state.pendingOperations
-        let document = response.data!.document
-        queuedOperations.forEach((operation) => {
-          document = applyLocalOperation(document, operation)
-        })
-
-        return {
-          invitation: response.data!.invitation,
-          document,
-          catalog: response.data!.catalog,
-          session: response.data!.session,
-          currentVersion: response.data!.currentVersion,
-          pendingOperations: queuedOperations,
-          isLoading: false,
-          isSaving: false,
-          error: null,
-          lastSavedAt: new Date().toISOString(),
-          previewTheme: null,
-        }
-      })
+      set({ isSaving: false })
     })()
 
     try {
       await activeFlushPromise
-    } catch (error) {
-      set((state) => ({
-        isSaving: false,
-        error: getPublicErrorMessage(error, 'Perubahan editor belum bisa disimpan.'),
-        pendingOperations: [...operationsToSave, ...state.pendingOperations],
-      }))
-      throw error
     } finally {
       activeFlushPromise = null
     }
@@ -512,6 +529,10 @@ export const useSapatamuEditorStore = create<SapatamuEditorStore>((set, get) => 
     }
   },
   uploadMedia: async (invitationId, file) => {
+    if (get().pendingOperations.length > 0) {
+      await get().flushPending(invitationId)
+    }
+
     set({ isSaving: true, error: null })
 
     try {
@@ -520,7 +541,7 @@ export const useSapatamuEditorStore = create<SapatamuEditorStore>((set, get) => 
         throw new Error('Response upload media kosong.')
       }
 
-      setResponseState(set, response.data)
+      setResponseStatePreservingPending(set, response.data)
     } catch (error) {
       set({
         isSaving: false,
