@@ -1752,31 +1752,52 @@ export class SapatamuService {
     if (rows.length === 0) return fallback;
 
     const fallbackByCode = new Map(fallback.map((item) => [item.layoutCode, item]));
-    const rowsByCode = new Map<string, (typeof rows)[number]>();
-    rows.forEach((row) => {
-      const existing = rowsByCode.get(row.layout_code);
-      if (!existing || (!existing.template_id && row.template_id === params.templateId)) {
-        rowsByCode.set(row.layout_code, row);
+    const resolveLayoutTemplateRowCodes = (layoutCode: string) => {
+      const baseGalleryLayoutCode = layoutCode.replace(/(galeri|gallery)[123]$/i, '$1');
+      if (baseGalleryLayoutCode === layoutCode && !fallbackByCode.has(layoutCode)) {
+        const expandedGalleryCodes = ([1, 2, 3] as const)
+          .map((index) => `${baseGalleryLayoutCode}${index}`)
+          .filter((code) => fallbackByCode.has(code));
+        if (expandedGalleryCodes.length > 1) {
+          return expandedGalleryCodes;
+        }
       }
+
+      return [layoutCode];
+    };
+    const rowsByCode = new Map<string, { row: (typeof rows)[number]; layoutCode: string; legacyGalleryBase: boolean }>();
+    rows.forEach((row) => {
+      resolveLayoutTemplateRowCodes(row.layout_code).forEach((layoutCode) => {
+        const existing = rowsByCode.get(layoutCode);
+        if (!existing || (!existing.row.template_id && row.template_id === params.templateId)) {
+          rowsByCode.set(layoutCode, {
+            row,
+            layoutCode,
+            legacyGalleryBase: layoutCode !== row.layout_code,
+          });
+        }
+      });
     });
 
     const merged = new Map<string, SapatamuEditorLayoutCatalogItem>(
       fallback.map((item) => [item.layoutCode, item]),
     );
 
-    rowsByCode.forEach((row) => {
+    rowsByCode.forEach(({ row, layoutCode, legacyGalleryBase }) => {
       if (row.is_active === false) {
-        merged.delete(row.layout_code);
+        merged.delete(layoutCode);
         return;
       }
 
-      const fallbackItem = fallbackByCode.get(row.layout_code);
+      const fallbackItem = fallbackByCode.get(layoutCode);
       const defaultData =
-        row.default_data_json && typeof row.default_data_json === 'object' && !Array.isArray(row.default_data_json)
+        legacyGalleryBase && fallbackItem
+          ? fallbackItem.defaultPageData
+          : row.default_data_json && typeof row.default_data_json === 'object' && !Array.isArray(row.default_data_json)
           ? (row.default_data_json as Record<string, unknown>)
           : fallbackItem?.defaultPageData ?? {};
-      merged.set(row.layout_code, {
-        layoutCode: row.layout_code,
+      merged.set(layoutCode, {
+        layoutCode,
         family: fallbackItem?.family ?? row.family,
         title: fallbackItem?.title ?? row.title,
         previewImageUrl: row.preview_image_url ?? fallbackItem?.previewImageUrl ?? '',
@@ -1784,7 +1805,7 @@ export class SapatamuService {
         requiredTier: fallbackItem?.requiredTier ?? 'basic',
         requiredFeatureCode: row.required_feature_code ?? fallbackItem?.requiredFeatureCode ?? null,
         maxInstances: row.max_instances ?? fallbackItem?.maxInstances ?? 1,
-        sortOrder: row.sort_order,
+        sortOrder: legacyGalleryBase ? fallbackItem?.sortOrder ?? row.sort_order : row.sort_order,
         supportsPreviewSelection: row.supports_preview_selection,
         mediaRequirements: fallbackItem?.mediaRequirements ?? 'none',
         defaultVisible: fallbackItem?.defaultVisible ?? true,

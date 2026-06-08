@@ -29,6 +29,20 @@ function preloadImage(src: string): Promise<void> {
   })
 }
 
+function preloadImagesInBackground(srcs: string[], onProgress?: (loaded: number, total: number) => void): Promise<void> {
+  if (!srcs.length) return Promise.resolve()
+  let loaded = 0
+
+  return Promise.all(
+    srcs.map((src) =>
+      preloadImage(src).then(() => {
+        loaded += 1
+        onProgress?.(loaded, srcs.length)
+      }),
+    ),
+  ).then(() => undefined)
+}
+
 function collectCriticalImageUrls(
   doc: SapatamuEditorDocumentV3 | null,
   themeId: string,
@@ -46,10 +60,10 @@ function collectCriticalImageUrls(
     urls.push(resolveApiAssetUrl(doc.editor.globalBackground))
   }
 
-  // Background tiap halaman (hanya 3 halaman pertama yang aktif)
+  // Hanya preload halaman pertama. Halaman berikutnya lazy-load saat slide mendekat.
   doc.editor.pages
     .filter((p) => p.isActive)
-    .slice(0, 3)
+    .slice(0, 1)
     .forEach((page) => {
       if (page.data.background && page.data.backgroundDetails?.type !== 'video') {
         urls.push(resolveApiAssetUrl(page.data.background))
@@ -288,6 +302,25 @@ function getEditorPageBackground(page: SapatamuEditorPage | undefined) {
   return page.data.background || ''
 }
 
+function shouldRenderPublicSlide(index: number, activeIndex: number, total: number) {
+  if (total <= 3) return true
+  return Math.abs(index - activeIndex) <= 1
+}
+
+function resolvePublicLayoutRowCodes(layoutCode: string, snapshotDefaults: Map<string, unknown>) {
+  const baseGalleryLayoutCode = layoutCode.replace(/(galeri|gallery)[123]$/i, '$1')
+  if (baseGalleryLayoutCode === layoutCode && !snapshotDefaults.has(layoutCode)) {
+    const expandedGalleryCodes = ([1, 2, 3] as const)
+      .map((index) => `${baseGalleryLayoutCode}${index}`)
+      .filter((code) => snapshotDefaults.has(code))
+    if (expandedGalleryCodes.length > 1) {
+      return expandedGalleryCodes
+    }
+  }
+
+  return [layoutCode]
+}
+
 function reconcilePublicDocument(
   document: SapatamuEditorDocumentV3 | null,
   rows: EditorLayoutTemplateRow[],
@@ -315,28 +348,30 @@ function reconcilePublicDocument(
   // Dari DB rows, hanya ambil metadata (family, title, sortOrder, isActive)
   // tapi JANGAN override defaultPageData dengan data fresh dari DB
   // karena itu akan membuat live view berbeda dari canvas user
-  const rowsByCode = new Map<string, EditorLayoutTemplateRow>()
+  const rowsByCode = new Map<string, { row: EditorLayoutTemplateRow; layoutCode: string }>()
   rows.forEach((row) => {
-    const existing = rowsByCode.get(row.layout_code)
-    if (!existing || (!existing.template_id && row.template_id === templateId)) {
-      rowsByCode.set(row.layout_code, row)
-    }
+    resolvePublicLayoutRowCodes(row.layout_code, snapshotDefaults).forEach((layoutCode) => {
+      const existing = rowsByCode.get(layoutCode)
+      if (!existing || (!existing.row.template_id && row.template_id === templateId)) {
+        rowsByCode.set(layoutCode, { row, layoutCode })
+      }
+    })
   })
 
-  rowsByCode.forEach((row) => {
+  rowsByCode.forEach(({ row, layoutCode }) => {
     if (row.is_active === false) {
-      snapshotDefaults.delete(row.layout_code)
+      snapshotDefaults.delete(layoutCode)
       return
     }
-    const existingDefault = snapshotDefaults.get(row.layout_code)
-    snapshotDefaults.set(row.layout_code, {
-      layoutCode: row.layout_code,
+    const existingDefault = snapshotDefaults.get(layoutCode)
+    snapshotDefaults.set(layoutCode, {
+      layoutCode,
       family: existingDefault?.family ?? row.family,
       title: existingDefault?.title ?? row.title,
       // Prioritaskan defaultPageData dari snapshot dokumen (canvas user)
       // Hanya gunakan data DB jika layout ini belum ada di snapshot (halaman baru)
       defaultPageData: existingDefault?.defaultPageData ?? row.default_data_json ?? {},
-      sortOrder: row.sort_order,
+      sortOrder: existingDefault?.sortOrder ?? row.sort_order,
       isActive: true,
     })
   })
@@ -700,16 +735,10 @@ export function TenantWeddingPage() {
         const criticalUrls = collectCriticalImageUrls(reconciledEditorDocument, nextTheme)
 
         if (criticalUrls.length > 0) {
-          let loaded = 0
-          await Promise.all(
-            criticalUrls.map((url) =>
-              preloadImage(url).then(() => {
-                loaded += 1
-                const preloadProgress = Math.round((loaded / criticalUrls.length) * 35)
-                setLoadingProgress(55 + preloadProgress)
-              }),
-            ),
-          )
+          void preloadImagesInBackground(criticalUrls, (loaded, total) => {
+            const preloadProgress = Math.round((loaded / total) * 35)
+            setLoadingProgress((current) => Math.max(current, 55 + preloadProgress))
+          })
         }
 
         // ── Step 5: Set state & selesai (100%) ──────────────────────
@@ -1005,32 +1034,37 @@ export function TenantWeddingPage() {
         >
           <div className="sapatamu-public-embla" ref={publicEmblaRef}>
             <div className="sapatamu-public-embla-track">
-              {activeEditorPages.map((page) => (
-                <div key={page.uniqueId} className="sapatamu-public-embla-slide" style={{ height: '100%' }}>
-                  <PreviewPage
-                    key={`${page.uniqueId}-${pageRunKeys[page.uniqueId] ?? 0}`}
-                    page={page}
-                    invitationId={invitationId}
-                    selectedElement={null}
-                    documentValue={editorDocument}
-                    invitationLink={invitationLink}
-                    fonts={PUBLIC_SAPATAMU_EDITOR_FONTS}
-                    fallbackImages={fallbackImages}
-                    onOpenLightbox={openGalleryLightbox}
-                    isEditing={false}
-                    onOpen={handleOpenInvitation}
-                    rsvpInitialName={guestName}
-                    rsvpMessages={guestMessages}
-                    onRsvpSubmitted={(message) => setGuestMessages((current) => [message, ...current])}
-                    giftAccounts={editorDocument.settings.giftAccounts}
-                    giftAddress={editorDocument.settings.giftAddress}
-                    isInvitationOpen={!isAishwaryaVintageDocument || isOpen}
-                    isMusicPlaying={isMusicPlaying}
-                    onMusicToggle={handleMusicToggle}
-                    onVintageNavigate={handleVintageNavigate}
-                  />
-                </div>
-              ))}
+              {activeEditorPages.map((page, index) => {
+                const shouldRenderSlide = shouldRenderPublicSlide(index, publicPageIndex, activeEditorPages.length)
+                return (
+                  <div key={page.uniqueId} className="sapatamu-public-embla-slide" style={{ height: '100%' }}>
+                    {shouldRenderSlide ? (
+                      <PreviewPage
+                        key={`${page.uniqueId}-${pageRunKeys[page.uniqueId] ?? 0}`}
+                        page={page}
+                        invitationId={invitationId}
+                        selectedElement={null}
+                        documentValue={editorDocument}
+                        invitationLink={invitationLink}
+                        fonts={PUBLIC_SAPATAMU_EDITOR_FONTS}
+                        fallbackImages={fallbackImages}
+                        onOpenLightbox={openGalleryLightbox}
+                        isEditing={false}
+                        onOpen={handleOpenInvitation}
+                        rsvpInitialName={guestName}
+                        rsvpMessages={guestMessages}
+                        onRsvpSubmitted={(message) => setGuestMessages((current) => [message, ...current])}
+                        giftAccounts={editorDocument.settings.giftAccounts}
+                        giftAddress={editorDocument.settings.giftAddress}
+                        isInvitationOpen={!isAishwaryaVintageDocument || isOpen}
+                        isMusicPlaying={isMusicPlaying}
+                        onMusicToggle={handleMusicToggle}
+                        onVintageNavigate={handleVintageNavigate}
+                      />
+                    ) : null}
+                  </div>
+                )
+              })}
             </div>
           </div>
 
@@ -1296,6 +1330,8 @@ export function TenantWeddingPage() {
                       key={item.id}
                       src={resolveApiAssetUrl(item.url)}
                       alt={`Galeri ${index + 1}`}
+                      loading="lazy"
+                      decoding="async"
                       className="aspect-square rounded-xl object-cover w-full"
                     />
                   ) : (

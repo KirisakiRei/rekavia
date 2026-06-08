@@ -1063,6 +1063,10 @@ function getGalleryImageStyle(element: SapatamuEditorGalleryElement, index: numb
   }
 }
 
+function compactGalleryItems(items: string[], slotCount: number) {
+  return items.filter(Boolean).slice(0, slotCount)
+}
+
 function EditorGalleryPreview(props: {
   page: SapatamuEditorPage
   elementKey: string
@@ -1075,10 +1079,8 @@ function EditorGalleryPreview(props: {
 }) {
   const { page, elementKey, element, selectedElement, invitationId, onOpenLightbox, isEditing } = props
   const layoutVariant = getGalleryLayoutVariant(element.variant)
-  const filledItems = element.items.filter(Boolean).slice(0, layoutVariant.slotCount)
-  const slots = isEditing
-    ? Array.from({ length: layoutVariant.slotCount }, (_, index) => filledItems[index] ?? '')
-    : filledItems
+  const filledItems = compactGalleryItems(element.items, layoutVariant.slotCount)
+  const slots = isEditing ? Array.from({ length: layoutVariant.slotCount }, (_, index) => filledItems[index] ?? '') : filledItems
 
   return (
     <EditorElementFrame
@@ -1102,12 +1104,15 @@ function EditorGalleryPreview(props: {
               style={getGalleryTileStyle(element, index)}
               onClick={(event) => {
                 event.stopPropagation()
-                onOpenLightbox(index, filledItems)
+                const lightboxIndex = slots.slice(0, index + 1).filter(Boolean).length - 1
+                onOpenLightbox(Math.max(0, lightboxIndex), filledItems)
               }}
             >
               <img
                 src={resolveApiAssetUrl(item)}
                 alt={`Gallery ${index + 1}`}
+                loading={isEditing ? 'eager' : 'lazy'}
+                decoding="async"
                 className="size-full object-cover transition-transform"
                 style={getGalleryImageStyle(element, index)}
               />
@@ -3675,16 +3680,17 @@ function InspectorGalleryControls(props: {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [openAdjustmentIndex, setOpenAdjustmentIndex] = useState<number | null>(null)
   const layoutVariant = getGalleryLayoutVariant(element.variant)
-  const slots = Array.from({ length: layoutVariant.slotCount }, (_, index) => element.items[index] ?? '')
+  const galleryItems = compactGalleryItems(element.items, layoutVariant.slotCount)
+  const slots = Array.from({ length: layoutVariant.slotCount }, (_, index) => galleryItems[index] ?? '')
   const imageAdjustments = element.imageAdjustments ?? []
 
   const updateItems = (items: string[]) => {
-    onPageField(`data.${elementKey}.items`, items.filter(Boolean).slice(0, layoutVariant.slotCount))
+    onPageField(`data.${elementKey}.items`, compactGalleryItems(items, layoutVariant.slotCount))
   }
 
   const removeItem = (index: number) => {
-    updateItems(element.items.filter((_, itemIndex) => itemIndex !== index))
-    onPageField(`data.${elementKey}.imageAdjustments`, imageAdjustments.filter((_, itemIndex) => itemIndex !== index))
+    updateItems(galleryItems.filter((_, itemIndex) => itemIndex !== index))
+    onPageField(`data.${elementKey}.imageAdjustments`, imageAdjustments.slice(0, galleryItems.length).filter((_, itemIndex) => itemIndex !== index))
     setOpenAdjustmentIndex((current) => {
       if (current === null) return null
       if (current === index) return null
@@ -3693,20 +3699,20 @@ function InspectorGalleryControls(props: {
   }
 
   const reorderItem = (fromIndex: number, toIndex: number) => {
-    if (fromIndex === toIndex || !element.items[fromIndex]) return
-    updateItems(arrayMove(element.items.slice(0, layoutVariant.slotCount), fromIndex, toIndex))
-    onPageField(`data.${elementKey}.imageAdjustments`, arrayMove(imageAdjustments.slice(0, layoutVariant.slotCount), fromIndex, toIndex))
+    if (fromIndex === toIndex || !galleryItems[fromIndex]) return
+    updateItems(arrayMove(galleryItems, fromIndex, toIndex))
+    onPageField(`data.${elementKey}.imageAdjustments`, arrayMove(imageAdjustments.slice(0, galleryItems.length), fromIndex, toIndex))
   }
 
   const updateAdjustment = (index: number, patch: { x?: number; y?: number; zoom?: number }) => {
-    const next = Array.from({ length: layoutVariant.slotCount }, (_, itemIndex) => ({
+    const next = Array.from({ length: galleryItems.length }, (_, itemIndex) => ({
       x: 0,
       y: 0,
       zoom: 1,
       ...(imageAdjustments[itemIndex] ?? {}),
     }))
     next[index] = { ...next[index], ...patch }
-    onPageField(`data.${elementKey}.imageAdjustments`, next.slice(0, element.items.length))
+    onPageField(`data.${elementKey}.imageAdjustments`, next)
   }
 
   return (
@@ -3759,8 +3765,8 @@ function InspectorGalleryControls(props: {
             variant="outline"
             size="sm"
             className="rounded-xl"
-            disabled={element.items.length >= layoutVariant.slotCount}
-            onClick={() => onOpenMedia(Math.min(element.items.length, layoutVariant.slotCount - 1))}
+            disabled={galleryItems.length >= layoutVariant.slotCount}
+            onClick={() => onOpenMedia()}
           >
             <ImagePlus className="mr-2 size-4" />
             Tambah
@@ -5226,19 +5232,15 @@ export function CmsSapatamuEditor() {
     if (mediaTarget.kind === 'element-gallery') {
       const currentElement = getEditableElement(page, mediaTarget.elementKey) as SapatamuEditorGalleryElement | null
       const slotCount = getGalleryLayoutVariant(currentElement?.variant).slotCount
-      const currentItems = Array.isArray(currentElement?.items) ? currentElement.items : []
-      const nextItems = Array.from({ length: slotCount }, (_, index) => currentItems[index] ?? '')
+      const currentItems = compactGalleryItems(Array.isArray(currentElement?.items) ? currentElement.items : [], slotCount)
+      const nextItems = [...currentItems]
       if (typeof mediaTarget.slotIndex === 'number') {
         const safeSlotIndex = Math.max(0, Math.min(mediaTarget.slotIndex, slotCount - 1))
         nextItems[safeSlotIndex] = mediaUrl
-      } else {
-        const emptySlotIndex = nextItems.findIndex((item) => !item)
-        if (emptySlotIndex >= 0) {
-          nextItems[emptySlotIndex] = mediaUrl
-        }
+      } else if (nextItems.length < slotCount) {
+        nextItems.push(mediaUrl)
       }
-      const lastFilledIndex = nextItems.reduce((lastIndex, item, index) => (item ? index : lastIndex), -1)
-      updatePageField(mediaTarget.pageUniqueId, `data.${mediaTarget.elementKey}.items`, nextItems.slice(0, lastFilledIndex + 1))
+      updatePageField(mediaTarget.pageUniqueId, `data.${mediaTarget.elementKey}.items`, compactGalleryItems(nextItems, slotCount))
     }
 
     setMediaDialogOpen(false)

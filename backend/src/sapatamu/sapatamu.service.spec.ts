@@ -333,6 +333,52 @@ describe('SapatamuService template editor defaults', () => {
     expect(openingLayouts[0].defaultPageData).toEqual({ text1: { type: 'text', content: 'TEMPLATE' } });
   });
 
+  it('does not keep legacy unnumbered source gallery rows beside expanded source gallery layouts', async () => {
+    const db = {
+      editorLayoutTemplate: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'legacy-cheerfulness-gallery',
+            product_code: 'sapatamu',
+            template_id: 'template-cheerfulness',
+            layout_code: 'cheerfulness-galeri',
+            family: 'galeri',
+            title: 'Galeri',
+            preview_image_url: '/legacy-gallery.webp',
+            default_data_json: { gallery: { type: 'gallery', items: ['/legacy.jpg'] } },
+            required_feature_code: null,
+            max_instances: 1,
+            sort_order: 9,
+            supports_preview_selection: true,
+            is_active: true,
+          },
+        ]),
+      },
+    };
+
+    const service = new SapatamuService(db as never, {} as never) as unknown as {
+      buildEditorLayoutCatalogFromDb: (params: {
+        themeId: string;
+        templateId: string;
+        profiles: Array<{ fullName?: string; nickName?: string; description?: string }>;
+        events: Array<{ name?: string; date?: string }>;
+      }) => Promise<Array<{ layoutCode: string; family: string }>>;
+    };
+
+    const catalog = await service.buildEditorLayoutCatalogFromDb({
+      themeId: 'cheerfulness-floralwhite',
+      templateId: 'template-cheerfulness',
+      profiles: [{ fullName: 'Raka', nickName: 'Raka' }, { fullName: 'Nadia', nickName: 'Nadia' }],
+      events: [{ name: 'Akad', date: '2026-08-10' }],
+    });
+
+    expect(catalog.filter((item) => item.family === 'galeri').map((item) => item.layoutCode)).toEqual([
+      'cheerfulness-galeri1',
+      'cheerfulness-galeri2',
+      'cheerfulness-galeri3',
+    ]);
+  });
+
   it('hides a layout when the template-scoped default is inactive', async () => {
     const db = {
       editorLayoutTemplate: {
