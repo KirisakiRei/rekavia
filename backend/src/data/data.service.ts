@@ -1,7 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import type { Prisma } from 'generated/prisma';
 import { DatabaseService } from 'src/database/database.service';
 import { ResponseDTO } from 'src/dto/response.dto';
 import { migrateContentJson } from 'src/sapatamu/sapatamu-content.helper';
+import { ensureImageVariantMetadata } from 'src/sapatamu/sapatamu-image-variants.helper';
 import { SupportedDataEntity } from './types/data-entity.type';
 import { DataListQuery } from './validation/data.validation';
 
@@ -102,15 +104,53 @@ export class DataService {
     return data;
   }
 
-  private normalizeReadRow(entity: string, row: any): any {
-    if (entity !== 'invitation-contents' || !row?.content_json) {
+  private async normalizeInvitationMediaRow(row: any): Promise<any> {
+    if (!row || row.media_type !== 'image' || typeof row.url !== 'string') {
       return row;
     }
 
-    return {
-      ...row,
-      content_json: migrateContentJson(row.content_json),
-    };
+    const metadata =
+      row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)
+        ? row.metadata as Record<string, unknown>
+        : {};
+
+    try {
+      const ensured = await ensureImageVariantMetadata(row.url, metadata);
+      if (!ensured.generated) {
+        return row;
+      }
+
+      await this.DB.invitationMedia.update({
+        where: { id: row.id },
+        data: {
+          metadata: ensured.metadata as Prisma.InputJsonValue,
+        },
+      });
+
+      return {
+        ...row,
+        metadata: ensured.metadata,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`[data] invitation-media variant backfill failed for ${row.id}: ${message}`);
+      return row;
+    }
+  }
+
+  private async normalizeReadRow(entity: string, row: any): Promise<any> {
+    if (entity === 'invitation-contents' && row?.content_json) {
+      return {
+        ...row,
+        content_json: migrateContentJson(row.content_json),
+      };
+    }
+
+    if (entity === 'invitation-media') {
+      return this.normalizeInvitationMediaRow(row);
+    }
+
+    return row;
   }
 
   async list(entity: string, query: DataListQuery): Promise<ResponseDTO> {
@@ -141,7 +181,7 @@ export class DataService {
       delegate.count({ where }),
     ]);
     const normalizedItems = Array.isArray(items)
-      ? items.map((item) => this.normalizeReadRow(entity, item))
+      ? await Promise.all(items.map((item) => this.normalizeReadRow(entity, item)))
       : items;
 
     return {
@@ -177,7 +217,7 @@ export class DataService {
       status: 'success',
       code: 200,
       message: 'Detail data ditemukan',
-      data: this.normalizeReadRow(entity, data),
+      data: await this.normalizeReadRow(entity, data),
     };
   }
 

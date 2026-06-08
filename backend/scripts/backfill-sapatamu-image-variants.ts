@@ -1,7 +1,9 @@
 import * as fs from 'fs';
 import { InvitationMediaType, PrismaClient, type Prisma } from '../generated/prisma';
 import {
+  ensureImageVariantMetadata,
   generateImageVariants,
+  hasCompleteImageVariants,
   mergeImageVariantMetadata,
   uploadUrlToLocalPath,
 } from '../src/sapatamu/sapatamu-image-variants.helper';
@@ -11,11 +13,6 @@ const prisma = new PrismaClient();
 function parseMetadata(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
   return value as Record<string, unknown>;
-}
-
-function hasVariants(metadata: Record<string, unknown>) {
-  const variants = metadata.variants;
-  return Boolean(variants && typeof variants === 'object' && !Array.isArray(variants));
 }
 
 async function main() {
@@ -34,7 +31,7 @@ async function main() {
 
   for (const item of media) {
     const metadata = parseMetadata(item.metadata);
-    if (!force && hasVariants(metadata)) {
+    if (!force && hasCompleteImageVariants(metadata)) {
       skipped += 1;
       continue;
     }
@@ -46,11 +43,20 @@ async function main() {
     }
 
     try {
-      const variants = await generateImageVariants(filePath);
+      const ensured = force
+        ? {
+            metadata: mergeImageVariantMetadata(metadata, await generateImageVariants(filePath)),
+            generated: true,
+          }
+        : await ensureImageVariantMetadata(item.url, metadata);
+      if (!ensured.generated) {
+        skipped += 1;
+        continue;
+      }
       await prisma.invitationMedia.update({
         where: { id: item.id },
         data: {
-          metadata: mergeImageVariantMetadata(metadata, variants) as Prisma.InputJsonValue,
+          metadata: ensured.metadata as Prisma.InputJsonValue,
         },
       });
       generated += 1;

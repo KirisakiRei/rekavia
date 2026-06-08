@@ -72,6 +72,7 @@ import {
   type PakasirMethod,
 } from 'src/payments/pakasir.service';
 import {
+  ensureImageVariantMetadata,
   generateImageVariants,
   mergeImageVariantMetadata,
 } from './sapatamu-image-variants.helper';
@@ -235,7 +236,9 @@ async function generateImageVariantsSafely(
 ): Promise<Record<string, unknown> | null> {
   try {
     return (await generateImageVariants(filePath)) as Record<string, unknown>;
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[sapatamu] image variant generation failed for ${filePath}: ${message}`);
     return null;
   }
 }
@@ -700,6 +703,58 @@ export class SapatamuService {
       record,
       content: migrateContentJson(record?.content_json),
     };
+  }
+
+  private async ensureMediaVariantRow<T extends {
+    id: string;
+    media_type: string;
+    url: string;
+    metadata: unknown;
+  }>(row: T): Promise<T> {
+    if (row.media_type !== InvitationMediaType.image || typeof row.url !== 'string') {
+      return row;
+    }
+
+    const metadata =
+      row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)
+        ? row.metadata as Record<string, unknown>
+        : {};
+
+    try {
+      const ensured = await ensureImageVariantMetadata(row.url, metadata);
+      if (!ensured.generated) {
+        return row;
+      }
+
+      await this.db.invitationMedia.update({
+        where: { id: row.id },
+        data: {
+          metadata: ensured.metadata as Prisma.InputJsonValue,
+        },
+      });
+
+      return {
+        ...row,
+        metadata: ensured.metadata,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`[sapatamu] media variant backfill failed for ${row.id}: ${message}`);
+      return row;
+    }
+  }
+
+  private async ensureMediaVariantRows<T extends {
+    id: string;
+    media_type: string;
+    url: string;
+    metadata: unknown;
+  }>(rows: T[]): Promise<T[]> {
+    const normalized: T[] = [];
+    for (const row of rows) {
+      normalized.push(await this.ensureMediaVariantRow(row));
+    }
+    return normalized;
   }
 
   private async getInvitationFeatureGrants(invitationId: string) {
@@ -1991,6 +2046,7 @@ export class SapatamuService {
     const attendingCount = rsvps.filter((item) => item.status === 'hadir').length;
     const notAttendingCount = rsvps.filter((item) => item.status === 'tidak').length;
     const totalGuestsComing = rsvps.reduce((total, item) => total + item.attendees_count, 0);
+    const normalizedMedia = await this.ensureMediaVariantRows(media);
     const activationStart = this.getActivationStartDate(invitation);
     const editWindow = this.calculateCountdownWindow({
       invitation,
@@ -2055,10 +2111,10 @@ export class SapatamuService {
         },
       },
       album: {
-        usedPhotoQuota: media.length,
+        usedPhotoQuota: normalizedMedia.length,
         allowedPhotoQuota,
         addOnPackages: [],
-        items: media.map((item) => ({
+        items: normalizedMedia.map((item) => ({
           id: item.id,
           url: item.url,
           fileName: item.file_name,

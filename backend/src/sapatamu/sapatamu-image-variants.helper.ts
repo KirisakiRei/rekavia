@@ -23,10 +23,12 @@ export const SAPATAMU_IMAGE_VARIANT_CONFIG: Record<
   SapatamuImageVariantKey,
   SapatamuImageVariantConfig
 > = {
-  thumb: { width: 480, quality: 72 },
-  medium: { width: 960, quality: 78 },
-  large: { width: 1600, quality: 82 },
+  thumb: { width: 640, quality: 74 },
+  medium: { width: 1280, quality: 80 },
+  large: { width: 1920, quality: 84 },
 };
+
+const REQUIRED_IMAGE_VARIANTS: SapatamuImageVariantKey[] = ['thumb', 'medium', 'large'];
 
 type SapatamuImageVariantTarget = SapatamuImageVariantMetadata & {
   path: string;
@@ -109,5 +111,58 @@ export function mergeImageVariantMetadata(
   return {
     ...metadata,
     variants,
+  };
+}
+
+function parseVariantMetadata(metadata: Record<string, unknown>): SapatamuImageVariantMap {
+  const variants = metadata.variants;
+  if (!variants || typeof variants !== 'object' || Array.isArray(variants)) return {};
+  return variants as SapatamuImageVariantMap;
+}
+
+function isVariantFileReachable(url: string, cwd = process.cwd()): boolean {
+  const variantPath = uploadUrlToLocalPath(url, cwd);
+  return Boolean(variantPath && fs.existsSync(variantPath));
+}
+
+function isUsableVariantMetadata(
+  value: SapatamuImageVariantMetadata | undefined,
+  cwd = process.cwd(),
+): boolean {
+  if (!value) return false;
+  if (!value.url || typeof value.url !== 'string') return false;
+  if (!Number.isFinite(value.width) || value.width <= 0) return false;
+  if (value.format !== 'webp') return false;
+  return isVariantFileReachable(value.url, cwd);
+}
+
+export function hasCompleteImageVariants(
+  metadata: Record<string, unknown>,
+  cwd = process.cwd(),
+): boolean {
+  const variants = parseVariantMetadata(metadata);
+  return REQUIRED_IMAGE_VARIANTS.every((key) =>
+    isUsableVariantMetadata(variants[key], cwd),
+  );
+}
+
+export async function ensureImageVariantMetadata(
+  sourceUrl: string,
+  metadata: Record<string, unknown>,
+  cwd = process.cwd(),
+): Promise<{ metadata: Record<string, unknown>; generated: boolean }> {
+  if (hasCompleteImageVariants(metadata, cwd)) {
+    return { metadata, generated: false };
+  }
+
+  const sourcePath = uploadUrlToLocalPath(sourceUrl, cwd);
+  if (!sourcePath || !fs.existsSync(sourcePath)) {
+    return { metadata, generated: false };
+  }
+
+  const variants = await generateImageVariants(sourcePath);
+  return {
+    metadata: mergeImageVariantMetadata(metadata, variants),
+    generated: true,
   };
 }
