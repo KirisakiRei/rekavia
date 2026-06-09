@@ -48,10 +48,17 @@ import {
   calculateThemeActivationCheckout,
   isInvitationThemeAccessActive,
   mergeEditorPageDataWithDefaults,
+  reconcileEditorDocumentWithCatalog,
   sortThemeAddonOrderItemsForFulfillment,
 } from './sapatamu.service';
-import { buildDefaultEditorState } from './sapatamu-editor.helper';
-import type { SapatamuEditorDocumentV3 } from './sapatamu-content.helper';
+import {
+  applyEditorPatchOperations,
+  buildDefaultEditorState,
+  buildEditorPackageFeatures,
+  buildLayoutCatalog,
+  normalizeEditorState,
+} from './sapatamu-editor.helper';
+import { buildContentFromDraft, type SapatamuEditorDocumentV3 } from './sapatamu-content.helper';
 
 describe('SapatamuService template asset application', () => {
   it('only applies frame assets to image slots that use template frames', () => {
@@ -419,5 +426,109 @@ describe('SapatamuService template editor defaults', () => {
     });
 
     expect(catalog.some((item) => item.layoutCode === 'malay-ethnic-red-ruby-livestreaming')).toBe(false);
+  });
+
+  it('reconciles legacy source-theme page unique ids before applying editor patches', () => {
+    const profiles = [
+      { id: 'profile-1', label: 'Profile 1', fullName: 'Pras', nickName: 'Pras', description: 'Groom' },
+      { id: 'profile-2', label: 'Profile 2', fullName: 'Dinda', nickName: 'Dinda', description: 'Bride' },
+    ];
+    const events = [
+      { id: 'event-1', name: 'Ngunduh Mantu', date: '2026-06-20', timeStart: '08:00', timeEnd: '21:00', timeZone: 'WIB' as const, address: 'Jl. Klambir', mapLocation: 'https://maps.app.goo.gl/a', enabled: true },
+      { id: 'event-2', name: 'Resepsi', date: '', timeStart: '', timeEnd: '', timeZone: 'WIB' as const, address: '', mapLocation: '', enabled: false },
+    ];
+    const canonical = buildContentFromDraft({
+      themeId: 'javanese-magnolia-tan-mahogany',
+      profiles,
+      events,
+      basePhotoQuota: 50,
+      requiredTierCategory: 'premium',
+    });
+    const legacyOrder = [
+      'javanese-magnolia-opening',
+      'javanese-magnolia-salam',
+      'javanese-magnolia-quote',
+      'javanese-magnolia-mempelai4',
+      'javanese-magnolia-acara2',
+      'javanese-magnolia-map2',
+      'javanese-magnolia-galeri1',
+      'javanese-magnolia-galeri2',
+      'javanese-magnolia-video',
+      'javanese-magnolia-doa',
+      'javanese-magnolia-acara5',
+      'javanese-magnolia-rsvp2',
+      'javanese-magnolia-gift1',
+      'javanese-magnolia-contact',
+      'javanese-magnolia-thanks',
+    ];
+    const legacyPages = legacyOrder.map((layoutCode, index) => {
+      const page = canonical.editor.pages.find((item) => item.layoutCode === layoutCode);
+      expect(page).toBeDefined();
+      return {
+        ...page!,
+        uniqueId: index + 1,
+      };
+    });
+    const storedLike = buildContentFromDraft({
+      themeId: canonical.selectedTheme,
+      profiles: canonical.profiles,
+      events: canonical.events,
+      basePhotoQuota: canonical.albumSettings.basePhotoQuota,
+      requiredTierCategory: 'premium',
+      existing: {
+        ...canonical,
+        editor: normalizeEditorState({
+          themeId: canonical.selectedTheme,
+          requiredTierCategory: 'premium',
+          profiles: canonical.profiles,
+          events: canonical.events,
+          raw: {
+            ...canonical.editor,
+            pages: legacyPages,
+          },
+        }),
+      },
+    });
+    const layouts = buildLayoutCatalog({
+      themeId: storedLike.selectedTheme,
+      profiles: storedLike.profiles,
+      events: storedLike.events,
+    });
+    const hydrated = reconcileEditorDocumentWithCatalog({
+      baseDocument: storedLike,
+      layouts,
+      packageFeatures: buildEditorPackageFeatures('premium'),
+    });
+    const hydratedVideo = hydrated.editor.pages.find((page) => page.layoutCode === 'javanese-magnolia-video');
+    const hydratedDoa = hydrated.editor.pages.find((page) => page.layoutCode === 'javanese-magnolia-doa');
+
+    expect(hydratedVideo?.uniqueId).toBe(12);
+    expect(hydratedDoa?.uniqueId).toBe(16);
+
+    const patched = applyEditorPatchOperations(
+      {
+        ...storedLike,
+        editor: hydrated.editor,
+      },
+      [
+        {
+          type: 'set_page_field',
+          uniqueId: hydratedVideo!.uniqueId,
+          path: 'isActive',
+          value: true,
+        },
+      ],
+    );
+    const rebuilt = buildContentFromDraft({
+      themeId: patched.selectedTheme,
+      profiles: patched.profiles,
+      events: patched.events,
+      basePhotoQuota: patched.albumSettings.basePhotoQuota,
+      requiredTierCategory: 'premium',
+      existing: patched,
+    });
+
+    expect(rebuilt.editor.pages.find((page) => page.layoutCode === 'javanese-magnolia-video')?.isActive).toBe(true);
+    expect(rebuilt.editor.pages.find((page) => page.layoutCode === 'javanese-magnolia-doa')?.isActive).toBe(true);
   });
 });

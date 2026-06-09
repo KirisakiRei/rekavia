@@ -62,6 +62,7 @@ import {
   normalizeEditorPageSlug,
   normalizeEditorState,
   type SapatamuEditorLayoutCatalogItem,
+  type SapatamuEditorPackageFeatures,
   type SapatamuEditorPage,
   type SapatamuEditorPatchOperation,
 } from './sapatamu-editor.helper';
@@ -207,6 +208,89 @@ export function mergeEditorPageDataWithDefaults(
   });
 
   return next;
+}
+
+export function reconcileEditorDocumentWithCatalog(params: {
+  baseDocument: SapatamuEditorDocumentV3;
+  layouts: SapatamuEditorLayoutCatalogItem[];
+  packageFeatures: SapatamuEditorPackageFeatures;
+}): SapatamuEditorDocumentV3 {
+  const activeLayouts = params.layouts
+    .filter((layout) => layout.defaultVisible !== false)
+    .sort((left, right) => left.sortOrder - right.sortOrder);
+  const activeLayoutCodes = new Set(activeLayouts.map((layout) => layout.layoutCode));
+  const currentPagesByLayout = new Map<string, SapatamuEditorPage[]>();
+
+  params.baseDocument.editor.pages.forEach((page) => {
+    currentPagesByLayout.set(page.layoutCode, [
+      ...(currentPagesByLayout.get(page.layoutCode) ?? []),
+      page,
+    ]);
+  });
+
+  const usedCurrentPageKeys = new Set<string>();
+  const reconciledPages = activeLayouts.map((layout, index) => {
+    const exactPage = currentPagesByLayout
+      .get(layout.layoutCode)
+      ?.find((page) => {
+        const pageIndex = params.baseDocument.editor.pages.indexOf(page);
+        return !usedCurrentPageKeys.has(`${page.layoutCode}:${page.id}:${pageIndex}`);
+      });
+    const currentPage =
+      exactPage ??
+      params.baseDocument.editor.pages.find(
+        (page) => {
+          const pageIndex = params.baseDocument.editor.pages.indexOf(page);
+          return (
+            page.family === layout.family &&
+            !activeLayoutCodes.has(page.layoutCode) &&
+            !usedCurrentPageKeys.has(`${page.layoutCode}:${page.id}:${pageIndex}`)
+          );
+        },
+      );
+
+    if (currentPage) {
+      const pageIndex = params.baseDocument.editor.pages.indexOf(currentPage);
+      usedCurrentPageKeys.add(`${currentPage.layoutCode}:${currentPage.id}:${pageIndex}`);
+    }
+
+    const uniqueId = index + 1;
+    return {
+      ...(currentPage ?? createEditorPageFromCatalog({
+        layout,
+        uniqueId,
+        source: 'base',
+        packageFeatures: params.packageFeatures,
+      })),
+      id: layout.layoutCode,
+      uniqueId,
+      title: layout.title,
+      slug: normalizeEditorPageSlug(layout.title, uniqueId),
+      layoutCode: layout.layoutCode,
+      family: layout.family,
+      isActive: currentPage?.isActive ?? true,
+      isLocked: false,
+      source: 'base' as const,
+      data: mergeEditorPageDataWithDefaults(currentPage?.data, layout.defaultPageData),
+    } satisfies SapatamuEditorPage;
+  });
+
+  return {
+    ...params.baseDocument,
+    editor: {
+      ...params.baseDocument.editor,
+      pages: reconciledPages,
+      layoutCatalogSnapshot: params.layouts.map((layout) => ({
+        layoutCode: layout.layoutCode,
+        family: layout.family,
+        title: layout.title,
+        previewImageUrl: layout.previewImageUrl,
+        requiredTier: layout.requiredTier,
+        requiredFeatureCode: layout.requiredFeatureCode,
+      })),
+      packageFeatures: params.packageFeatures,
+    },
+  };
 }
 
 function combineDateTime(date: string, time: string): Date | null {
@@ -702,6 +786,50 @@ export class SapatamuService {
     return {
       record,
       content: migrateContentJson(record?.content_json),
+    };
+  }
+
+  private async buildHydratedEditorDocument(
+    invitation: { template_id: string | null },
+    content: SapatamuEditorDocumentV3,
+  ) {
+    const tierCategory = isTierCategory(content.settings.commerce.requiredTierCategory)
+      ? content.settings.commerce.requiredTierCategory
+      : 'basic';
+    const packageFeatures = buildEditorPackageFeatures(tierCategory);
+    const layouts = await this.buildEditorLayoutCatalogFromDb({
+      themeId: content.selectedTheme,
+      templateId: invitation.template_id,
+      profiles: content.profiles,
+      events: content.events,
+    });
+    const baseDocument = buildContentFromDraft({
+      themeId: content.selectedTheme,
+      profiles: content.profiles,
+      events: content.events,
+      basePhotoQuota: content.albumSettings.basePhotoQuota,
+      requiredTierCategory: tierCategory,
+      existing: {
+        ...content,
+        editor: normalizeEditorState({
+          themeId: content.selectedTheme,
+          requiredTierCategory: tierCategory,
+          profiles: content.profiles,
+          events: content.events,
+          raw: content.editor,
+        }),
+      },
+    });
+
+    return {
+      document: reconcileEditorDocumentWithCatalog({
+        baseDocument,
+        layouts,
+        packageFeatures,
+      }),
+      layouts,
+      packageFeatures,
+      tierCategory,
     };
   }
 
@@ -1621,46 +1749,24 @@ export class SapatamuService {
     ]);
 
     const slug = slugRow?.slug ?? slugify(invitation.title);
-    const tierCategory = isTierCategory(content.settings.commerce.requiredTierCategory)
-      ? content.settings.commerce.requiredTierCategory
-      : this.getTierCategoryFromTheme(invitation.template);
-    const packageFeatures = buildEditorPackageFeatures(tierCategory);
-    const layouts = await this.buildEditorLayoutCatalogFromDb({
-      themeId: content.selectedTheme,
-      templateId: invitation.template_id,
-      profiles: content.profiles,
-      events: content.events,
-    });
-    const themeCatalog = await this.ensureCatalog();
-    const baseDocument = buildContentFromDraft({
-      themeId: content.selectedTheme,
-      profiles: content.profiles,
-      events: content.events,
-      basePhotoQuota: content.albumSettings.basePhotoQuota,
-      requiredTierCategory: tierCategory,
-      existing: {
+    const fallbackTierCategory = this.getTierCategoryFromTheme(invitation.template);
+    const { document, layouts, packageFeatures, tierCategory } = await this.buildHydratedEditorDocument(
+      invitation,
+      {
         ...content,
-        editor: normalizeEditorState({
-          themeId: content.selectedTheme,
-          requiredTierCategory: tierCategory,
-          profiles: content.profiles,
-          events: content.events,
-          raw: content.editor,
-        }),
+        settings: {
+          ...content.settings,
+          commerce: {
+            ...content.settings.commerce,
+            requiredTierCategory:
+              isTierCategory(content.settings.commerce.requiredTierCategory)
+                ? content.settings.commerce.requiredTierCategory
+                : fallbackTierCategory,
+          },
+        },
       },
-    });
-    const activeLayouts = layouts
-      .filter((layout) => layout.defaultVisible !== false)
-      .sort((left, right) => left.sortOrder - right.sortOrder);
-    const activeLayoutCodes = new Set(activeLayouts.map((layout) => layout.layoutCode));
-    const currentPagesByLayout = new Map<string, SapatamuEditorPage[]>();
-    baseDocument.editor.pages.forEach((page) => {
-      currentPagesByLayout.set(page.layoutCode, [
-        ...(currentPagesByLayout.get(page.layoutCode) ?? []),
-        page,
-      ]);
-    });
-    const usedCurrentPageKeys = new Set<string>();
+    );
+    const themeCatalog = await this.ensureCatalog();
     const addonPackages = themeCatalog.packages
       .filter((item) => item.package_type === PackageType.add_on)
       .filter((item) => cleanString(parseJsonObject(item.features_json).featureCode) === 'theme_add_on')
@@ -1672,59 +1778,6 @@ export class SapatamuService {
     const addonNormalPrice = secondAddonPackage
       ? toNumber(parseJsonObject(secondAddonPackage.features_json).normalPrice, firstAddonPrice)
       : firstAddonPrice;
-    const reconciledPages = activeLayouts
-      .map((layout, index) => {
-        const exactPage = currentPagesByLayout
-          .get(layout.layoutCode)
-          ?.find((page) => {
-            const pageIndex = baseDocument.editor.pages.indexOf(page);
-            return !usedCurrentPageKeys.has(`${page.layoutCode}:${page.id}:${pageIndex}`);
-          });
-        const currentPage =
-          exactPage ??
-          baseDocument.editor.pages.find(
-            (page) => {
-              const pageIndex = baseDocument.editor.pages.indexOf(page);
-              return (
-                page.family === layout.family &&
-                !activeLayoutCodes.has(page.layoutCode) &&
-                !usedCurrentPageKeys.has(`${page.layoutCode}:${page.id}:${pageIndex}`)
-              );
-            },
-          );
-        if (currentPage) {
-          const pageIndex = baseDocument.editor.pages.indexOf(currentPage);
-          usedCurrentPageKeys.add(`${currentPage.layoutCode}:${currentPage.id}:${pageIndex}`);
-        }
-        const uniqueId = index + 1;
-        return {
-          ...(currentPage ?? createEditorPageFromCatalog({
-            layout,
-            uniqueId,
-            source: 'base',
-            packageFeatures,
-          })),
-          id: layout.layoutCode,
-          uniqueId,
-          title: layout.title,
-          slug: normalizeEditorPageSlug(layout.title, uniqueId),
-          layoutCode: layout.layoutCode,
-          family: layout.family,
-          isActive: currentPage?.isActive ?? true,
-          isLocked: false,
-          source: 'base' as const,
-          data: mergeEditorPageDataWithDefaults(currentPage?.data, layout.defaultPageData),
-        } satisfies SapatamuEditorPage;
-      });
-    const document: SapatamuEditorDocumentV3 = {
-      ...baseDocument,
-      editor: {
-        ...baseDocument.editor,
-        pages: reconciledPages,
-        layoutCatalogSnapshot: layouts,
-        packageFeatures,
-      },
-    };
 
     return {
       invitation: {
@@ -3887,13 +3940,23 @@ export class SapatamuService {
       throw new BadRequestException('Tidak ada perubahan editor yang dikirim.');
     }
 
-    let nextContent = applyEditorPatchOperations(current.content, operations);
+    const { document: hydratedDocument, tierCategory } = await this.buildHydratedEditorDocument(
+      invitation,
+      current.content,
+    );
+    let nextContent = applyEditorPatchOperations(
+      {
+        ...current.content,
+        editor: hydratedDocument.editor,
+      },
+      operations,
+    );
     nextContent = buildContentFromDraft({
       themeId: nextContent.selectedTheme,
       profiles: nextContent.profiles,
       events: nextContent.events,
       basePhotoQuota: nextContent.albumSettings.basePhotoQuota,
-      requiredTierCategory: nextContent.settings.commerce.requiredTierCategory,
+      requiredTierCategory: tierCategory,
       existing: nextContent,
     });
 
